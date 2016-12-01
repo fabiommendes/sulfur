@@ -70,7 +70,7 @@ class Response:
     header = delegate_to('_data')
 
 
-class HttpResponse(Response):
+class HTTPResponse(Response):
     """
     Represents a response to an HTTP request.
     """
@@ -79,7 +79,7 @@ class HttpResponse(Response):
         self._data = data
 
 
-class HttpClient(Client):
+class HTTPClient(Client):
     """
     Client that performs actual HTTP requests
     """
@@ -87,7 +87,12 @@ class HttpClient(Client):
     def get(self, url, data=None):
         url = self.url_normalize(url)
         response = requests.get(url, data)
-        return HttpResponse(response)
+        return HTTPResponse(response)
+
+    def post(self, url, data=None):
+        url = self.url_normalize(url)
+        response = requests.post(url, data)
+        return HTTPResponse(response)
 
 
 class DjangoClient(Client):
@@ -101,10 +106,7 @@ def get_client_class():
     Return the default global client class.
     """
 
-    if Client.DEFAULT_CONCRETE_CLASS is None:
-        return HttpClient
-    else:
-        return Client.DEFAULT_CONCRETE_CLASS
+    return Client.DEFAULT_CONCRETE_CLASS
 
 
 def set_client_class(cls):
@@ -113,3 +115,6 @@ def set_client_class(cls):
     """
 
     Client.DEFAULT_CONCRETE_CLASS = cls
+
+
+set_client_class(HTTPClient)

@@ -1,6 +1,8 @@
 import pytest
 
-from sulfur import *
+from sulfur import check_server_error, check_client_error, check_success, \
+    check_2xx, check_ok, check_4xx, check_3xx, check_404, check_5xx, \
+    ValidationError
 
 
 @pytest.fixture
@@ -8,8 +10,7 @@ def url(port):
     return 'http://localhost:%s/base.html' % port
 
 
-@pytest.mark.usefixtures('server')
-def test_url_checker(port, url):
+def test_url_checker(server, url):
     assert check_ok(url)
     assert check_success(url)
     assert check_2xx(url)
@@ -17,7 +18,7 @@ def test_url_checker(port, url):
     assert not check_3xx(url)
     assert not check_client_error(url)
     assert not check_server_error(url)
-    assert check_404('http://localhost:%s/does-not-exist.html' % port)
+    assert check_404(server.base_url + 'does-not-exist.html')
 
 
 def test_raises_on_error(url):

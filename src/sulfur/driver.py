@@ -120,6 +120,8 @@ class DriverBase(QueriableMixin):
         self.base_url = url and normalize_url(url)
         self.url = None
         self._driver.implicitly_wait(wait)
+        if url:
+            self.open()
 
     def __call__(self, selector):
         return self.query(selector)

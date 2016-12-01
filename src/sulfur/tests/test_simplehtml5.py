@@ -64,7 +64,7 @@ def test_validate_self_closing_tag():
 
 
 def test_validate_bytestring():
-    assert_ok(b'<div id="foo"></div>')
+    assert_ok(b'<div id="foo"></div>', False)
 
 
 def test_comment():
