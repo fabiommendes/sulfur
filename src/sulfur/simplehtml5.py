@@ -22,13 +22,13 @@ self_closing_tags = {'br', 'link', 'meta'}
 CLOSE_TAG = object()
 
 
-class ValidMixin:
+class ValidatingMixin:
     """
-    Implement the as_valid() and validate() methods.
+    Implement the create_valid() and validate() methods.
     """
 
     @classmethod
-    def as_valid(cls, *args, **kwargs):
+    def create_valid(cls, *args, **kwargs):
         """
         Create a new instance and immediately validate it.
 
@@ -46,13 +46,16 @@ class ValidMixin:
         Raises an ValidationError() if validation fails.
         """
 
-        raise ValidationError('validation must be implemented in subclasses')
+        raise NotImplementedError
 
 
-class HtmlElement(ValidMixin):
+class HtmlElement(ValidatingMixin):
     """
     Base HTML class for Tags/Document and other HTML elements.
     """
+
+    tag = None
+    self_closing = False
 
     def __init__(self, children=None):
         self.children = list(children or [])
@@ -131,7 +134,7 @@ class HtmlTag(HtmlElement):
         return '<%s%s>%s</%s>' % (self.tag, attr_data, children, self.tag)
 
 
-class TextBase(ValidMixin, collections.UserString):
+class TextBase(ValidatingMixin, collections.UserString):
     """
     Base class for HTML text fragments.
     """
@@ -203,7 +206,8 @@ class SimpleHtml5Validator:
     subclassed.
     """
 
-    def __init__(self, data, doctype=False, head=False, body=False):
+    def __init__(self, data, doctype=False, head=False, body=False,
+                 encoding='utf8'):
         self.data = data
         self.doctype = doctype
         self.head = head
@@ -212,26 +216,21 @@ class SimpleHtml5Validator:
         self._document = Document()
         self._open_tags = [self._document]
         self._current = self._document
+        if hasattr(self._stream, 'decode'):
+            self._stream = self._stream.decode(encoding)
 
     def _parse_comments(self):
-        ...
-        return
+        data, sep, self._stream = self._stream[4:].partition('-->')
+        if not sep:
+            raise ValidationError('expect --> to close a comment.')
+        return Comment(data)
 
     def _parse_doctype(self):
-        if not self._stream.startswith('<!DOCTYPE'):
-            return None
-
         data, sep, self._stream = self._stream.partition('>')
-        if not sep:
-            raise ValidationError('invalid doctype declaration: ' + data)
-        data = data[9:]  # remove <!DOCTYPE string from be￼ginning
-        return DOCTYPE.as_valid(data.strip())
-
-    def _parse_spaces(self):
-        data = self._parse_from_re(spaces_re)
-        if data:
-            return Text.as_valid(data)
-        return None
+        if (not sep) or (not data) or (data[9] != ' '):
+            raise ValidationError('invalid doctype declaration: %s>' % data)
+        data = data[10:]  # remove "<!DOCTYPE "
+        return DOCTYPE.create_valid(data.strip())
 
     def _parse_text(self):
         data, sep, missing = self._stream.partition('<')
@@ -273,6 +272,8 @@ class SimpleHtml5Validator:
                         value, sep, self._stream = re_partition(tag_separator_re, self._stream)
                         if sep.strip():
                             self._stream = sep.strip() + self._stream
+                        if not attr_value_re.fullmatch(value):
+                            raise ValidationError('invalid tag attribute: %r' % value)
 
                 attributes.append((name, value))
 
@@ -281,7 +282,7 @@ class SimpleHtml5Validator:
                         '">" expected for closing %s tag' % tagname)
             self._stream = self._stream[1:]  # strip the first ">" character
 
-        tag = HtmlTag.as_valid(tagname.strip(), **tag_kwargs)
+        tag = HtmlTag.create_valid(tagname.strip(), **tag_kwargs)
         self._open_tags.append(tag)
         return tag
 
@@ -297,10 +298,10 @@ class SimpleHtml5Validator:
                 break
             elif last.self_closing:
                 continue
-            raise ValidationError('forgot to close tag' % last.tag)
+            raise ValidationError('forgot to close tag: %r' % last.tag)
         else:
             raise ValidationError(
-                'closing tag </%s> without an open tag' % tagname
+                'closing tag </%s> without an open tag.' % tagname
             )
         return CLOSE_TAG
 

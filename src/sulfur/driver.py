@@ -1,13 +1,16 @@
+import io
+
 from bs4 import BeautifulSoup
 from lazyutils import lazy, delegate_to
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+from sulfur.driver_attributes import WindowManager, FocusManager, CookieManager
 from sulfur.element import Element
 from sulfur.id_manager import IdManager
-from sulfur.query import Query
 from sulfur.queriable import QueriableMixin
-from sulfur.utils import normalize_url
+from sulfur.query import Query
+from sulfur.utils import normalize_url, join_url, wraps_selenium_timeout_error
 
 
 class DriverBase(QueriableMixin):
@@ -20,6 +23,14 @@ class DriverBase(QueriableMixin):
 
     title = delegate_to('_driver')
 
+    @lazy
+    def cookies(self):
+        """
+        Access and modify cookies.
+        """
+
+        return CookieManager(self)
+
     @property
     def selenium(self):
         """
@@ -28,13 +39,24 @@ class DriverBase(QueriableMixin):
 
         return self._driver
 
+    @property
+    def Se(self):
+        """
+        Alias to .selenium
+        """
+
+        return self.selenium
+
     @lazy
     def soup(self):
         """
         A beautiful soup interface to the HTML source code
         """
 
-        return BeautifulSoup(self.page, self._soup_lib)
+        if self.page is None:
+            return None
+        else:
+            return BeautifulSoup(self.page, self._soup_lib)
 
     @property
     def page(self):
@@ -52,20 +74,60 @@ class DriverBase(QueriableMixin):
 
         return IdManager(self)
 
+    @property
+    def version(self):
+        """
+        Browser's version.
+        """
+
+        return self._driver.capabilities['version']
+
+    @property
+    def html(self):
+        """
+        Page's html source code.
+        """
+
+        return self._driver.page_source
+
+    @property
+    def window(self):
+        """
+        Control window behaviors.
+        """
+
+        return WindowManager(self)
+
+    @property
+    def switch_to(self):
+        """
+        Focus manager.
+        """
+
+        return FocusManager(self)
+
+    @property
+    def windowless(self):
+        """
+        True if driver runs on a windowless mode (e.g., phantomjs).
+        """
+
+        return self._driver.name in ['phantomjs']
+
     def __init__(self, driver, url='', wait=0):
         self._driver = driver
         self._page = None
         self.base_url = url and normalize_url(url)
+        self.url = None
         self._driver.implicitly_wait(wait)
 
     def __call__(self, selector):
-        elements = self._driver.find_elements_by_css_selector(selector)
-        return Query(self, [self._wrap_element(x) for x in elements])
+        return self.query(selector)
 
     def __getitem__(self, selector):
-        elem = self._driver.find_element_by_css_selector(selector)
-        return self._wrap_element(elem)
+        return self.get(selector)
 
+    # Browser actions
     def open(self, url=''):
         """
         Opens the given url.
@@ -73,15 +135,66 @@ class DriverBase(QueriableMixin):
         Returns a page object.
         """
 
-        self.url = normalize_url(self.base_url + url)
+        self.url = join_url(self.base_url, url)
         return self._driver.get(self.url)
+
+    def back(self, n=1):
+        """
+        Go back n steps in browser history.
+        """
+
+        if n >= 1:
+            self._driver.back()
+            self.back(n - 1)
+        elif n < 0:
+            self._driver.forward()
+            self.back(n + 1)
+
+    def forward(self, n=1):
+        """
+        Go forward n steps in browser history.
+        """
+
+        self.back(-n)
+
+    def refresh(self):
+        """
+        Refresh current page.
+        """
+
+        self._driver.refresh()
 
     def click(self, selector):
         """
         Clicks in the first element with the given CSS selector.
         """
 
-        self[selector].click()
+        elem = self.get(selector)
+        if elem is not None:
+            elem.click()
+
+    def send(self, *args, to=None):
+        """
+        Alias to send_keys().
+        """
+
+        return self._driver.send_keys(*args)
+
+    def script(self, script, async=False):
+        """
+        Executes JavaScript script.
+
+        Args:
+            script (str):
+                A string of JavaScript source.
+            async (bool):
+                Set to True to execute script asyncronously.
+        """
+
+        if async:
+            self._driver.execute_async_script(script)
+        else:
+            self._driver.execute_script(script)
 
     def close(self, quit=True):
         """
@@ -96,23 +209,44 @@ class DriverBase(QueriableMixin):
         else:
             self._driver.close()
 
-    def send(self, *args):
-        """
-        Alias to send_keys().
-        """
-
-        return self._driver.send_keys(*args)
-
     def restart(self):
         """
         Restart the web driver and go to the current url.
         """
 
         self._driver = type(self._driver)()
-        self.open(self.url)
+        self.open(self.url or '')
+
+    # Other
+    def screenshot(self, path=None, format='png'):
+        """
+        Returns a file object holding data for a  screenshot of the current
+        screen.
+
+        Args:
+            path:
+                If given, saves file in the given path.
+            format:
+                One of 'png' or 'base64'
+        """
+
+        if path:
+            F = open(path, 'wb')
+        else:
+            F = io.BytesIO()
+
+        if format == 'png':
+            data = self._driver.get_screenshot_as_png()
+        elif format == 'base64':
+            data = self._driver.get_screenshot_as_base64()
+        else:
+            raise ValueError('invalid format: %r' % format)
+        F.write(data)
+        return F
 
     # Wait conditions
-    def wait_on(self, func, timeout=1.0):
+    @wraps_selenium_timeout_error
+    def wait(self, func, timeout=1.0):
         """
         Wait until func(driver) return True.
 
@@ -122,24 +256,28 @@ class DriverBase(QueriableMixin):
 
         WebDriverWait(self, timeout).until(func)
 
-    def wait_title(self, value, timeout=1.0):
+    @wraps_selenium_timeout_error
+    def wait_title(self, value, timeout=1.0, contains=False):
         """
         Waits until the page title assumes the given value.
 
         Raises a TimeoutError if condition is not met in the given interval.
+
+        Args:
+            value (str):
+                expected title
+            timeout (float):
+                timeout in seconds
+            contains (bool):
+                If true, checks if title contains the value substring. The
+                default behavior is to wait until the title is exactly equal
+                the given value string.
         """
 
-        condition = EC.title_is(value)
-        WebDriverWait(self, timeout).until(condition)
-
-    def wait_title_contains(self, value, timeout=1.0):
-        """
-        Waits until the page title contains the given value.
-
-        Raises a TimeoutError if condition is not met in the given interval.
-        """
-
-        condition = EC.title_contains(value)
+        if contains:
+            condition = EC.title_contains(value)
+        else:
+            condition = EC.title_is(value)
         WebDriverWait(self, timeout).until(condition)
 
     # Private methods
@@ -148,7 +286,7 @@ class DriverBase(QueriableMixin):
 
     def _wrap_query(self, query):
         wrap = self._wrap_element
-        return Query(self, [wrap(x) for x in self])
+        return Query(self, [wrap(x) for x in query])
 
     def _get_query_facade_delegate(self):
         return self._driver

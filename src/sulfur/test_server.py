@@ -1,55 +1,57 @@
 import os
-import sys
-from subprocess import Popen
-from http import server
 import threading
+from http import server
 
 
 class TestServer:
     """
-    Starts http.server simple server.
+    Runner for http.server simple server.
     """
 
-    def __init__(self, port=8000, path=None, force_subprocess=False):
+    @property
+    def base_url(self):
+        return 'http://localhost:%s/' % self.port
+
+    @property
+    def running(self):
+        return self._target is not None
+
+    def __init__(self, port=8000, path=None, poll_interval=0.5):
         path = path or os.getcwd()
         self.port = port
         self.path = path
         self._target = None
-        self._subprocess = force_subprocess
+        self._server_obj = None
+        self.poll_interval = poll_interval
 
     def start(self):
         """
         Starts serving.
         """
 
-        if self._subprocess:
-            command = [sys.executable, '-m', 'http.server', str(self.port)]
-            self._process = Popen(command, cwd=self.path)
-        else:
-            self._target = threading.Thread(target=self._serve, daemon=True)
-            self._target.start()
+        class HTTPHandler(BaseHTTPHandler):
+            cwd = self.path
+
+        addr = ('', self.port)
+        self._server_obj = server.HTTPServer(addr, HTTPHandler)
+        target = self._server_obj.serve_forever
+        self._target = threading.Thread(target=target,
+                                        daemon=True,
+                                        args=(self.poll_interval,))
+        self._target.start()
 
     def stop(self):
         """
         Stops server.
         """
 
-        if self._target is not None and self._subprocess:
-            self._target.terminate()
-        elif self._target is not None:
-            self._srv.server_close()
-            self._target.join(timeout=0)
+        if self._target is not None:
+            self._server_obj.shutdown()
+            self._target.join(timeout=self.poll_interval)
+            self._server_obj.server_close()
         else:
             raise RuntimeError('server not initialized.')
         self._target = None
-
-    def _serve(self):
-        class HTTPHandler(BaseHTTPHandler):
-            cwd = self.path
-
-        addr = ('', self.port)
-        self._srv = server.HTTPServer(addr, HTTPHandler)
-        self._srv.serve_forever()
 
 
 class BaseHTTPHandler(server.SimpleHTTPRequestHandler):

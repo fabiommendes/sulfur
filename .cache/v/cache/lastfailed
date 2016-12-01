@@ -1,0 +1,4 @@
+{
+  "src/sulfur/tests/test_simplehtml5.py::test_validate_bytestring": true,
+  "src/sulfur/tests/test_urlchecker.py::test_failed_post": true
+}

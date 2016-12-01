@@ -32,7 +32,7 @@ class QueriableMixin:
         """
 
         wrapper = self._wrap_query
-        return self.__worker('find_elements_by', wrapper, query)
+        return self.__worker('find_elements_by_', wrapper, query)
 
     def _get_query_type(self, query):
         for func, name in self._query_tests.items():

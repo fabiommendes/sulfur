@@ -3,7 +3,14 @@ def delayed_method(name):
         self._touch()
         method = getattr(self, name)
         return method(*args, **kwargs)
+
     return method
+
+
+class Inert:
+    """
+    A class that does nothing
+    """
 
 
 class Delayed:
@@ -26,16 +33,20 @@ class Delayed:
         for k, v in list(obj.__dict__.items()):
             setattr(self, k, v)
             delattr(obj, k)
+
         try:
-            del obj
+            obj.__del__()
         except:
             pass
+        finally:
+            obj.__class__ = Inert
 
         self.__class__ = cls
 
     def __getattr__(self, attr):
         self._touch()
         return getattr(self, attr)
+
 
 for _name in ['repr', 'str', 'getitem', 'setitem', 'len', 'iter']:
     _name = '__%s__' % _name

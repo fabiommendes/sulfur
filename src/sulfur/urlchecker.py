@@ -144,11 +144,9 @@ def check_ok(url, **kwargs):
     2xx or in the 3xx range.
     """
 
-    @_set_func_kwargs(kwargs)
-    def code_checker(code):
-        return 200 <= code <= 399
-
-    return check_response(url, **kwargs)
+    return check_response(url,
+                          code_checker=lambda code: 200 <= code <= 399,
+                          **kwargs)
 
 
 def check_2xx(url, **kwargs):
@@ -157,11 +155,9 @@ def check_2xx(url, **kwargs):
     range.
     """
 
-    @_set_func_kwargs(kwargs)
-    def code_checker(code):
-        return 200 <= code <= 299
-
-    return check_response(url, **kwargs)
+    return check_response(url,
+                          code_checker=lambda code: 200 <= code <= 299,
+                          **kwargs)
 
 
 def check_3xx(url, **kwargs):
@@ -170,11 +166,9 @@ def check_3xx(url, **kwargs):
     range.
     """
 
-    @_set_func_kwargs(kwargs)
-    def code_checker(code):
-        return 300 <= code <= 399
-
-    return check_response(url, **kwargs)
+    return check_response(url,
+                          code_checker=lambda code: 300 <= code <= 399,
+                          **kwargs)
 
 
 def check_4xx(url, **kwargs):
@@ -183,11 +177,9 @@ def check_4xx(url, **kwargs):
     range.
     """
 
-    @_set_func_kwargs(kwargs)
-    def code_checker(code):
-        return 400 <= code <= 499
-
-    return check_response(url, **kwargs)
+    return check_response(url,
+                          code_checker=lambda code: 400 <= code <= 499,
+                          **kwargs)
 
 
 def check_404(url, **kwargs):
@@ -204,11 +196,9 @@ def check_5xx(url, **kwargs):
     range.
     """
 
-    @_set_func_kwargs(kwargs)
-    def code_checker(code):
-        return 500 <= code <= 599
-
-    return check_response(url, **kwargs)
+    return check_response(url,
+                          code_checker=lambda code: 500 <= code <= 599,
+                          **kwargs)
 
 
 # Aliases
@@ -239,20 +229,3 @@ def check_server_error(url, **kwargs):
     """
     return check_5xx(url, **kwargs)
 
-
-def _set_func_kwargs(dic):
-    """
-    Usage::
-
-        @_set_func_kwargs(D)
-        def func():
-            pass
-
-    Same as D['func'] = func
-    """
-
-    def decorator(func):
-        dic[func.__name__] = func
-        return func
-
-    return decorator

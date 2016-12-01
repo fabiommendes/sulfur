@@ -54,6 +54,7 @@ setup(
         'lxml',
         'html5lib',
         'lazyutils',
+        'requests',
     ],
     extras_require={
         'dev': [

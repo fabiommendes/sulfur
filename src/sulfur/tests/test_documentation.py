@@ -41,7 +41,4 @@ def make_manuel_suite(ns):
         ns[name] = pytest.mark.documentation(_wrapped(test.runTest, name))
     return suite
 
-try:
-    make_manuel_suite(globals())
-except OSError:
-    print('Documentation files not found: disabling tests!')
+make_manuel_suite(globals())
