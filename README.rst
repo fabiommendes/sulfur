@@ -16,13 +16,16 @@ Basic Usage
 Let us start a new webdriver (sulfur uses Chrome by default):
 
 >>> from sulfur import Driver
->>> driver = Driver('chrome', url='http://www.python.org')
+>>> driver = Driver('chrome', url='http://www.python.org')      # doctest: +SKIP
+
+.. invisible-code-block:: python
+    driver = Driver('phantomjs', url='http://www.python.org')
 
 The driver object is used to control the web browser. There are several actions
 that can be
 
 
->>> driver.close()
+>>> driver.close()                                             
 
 
 Selectors and queries

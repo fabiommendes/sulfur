@@ -21,3 +21,4 @@ src/sulfur/__meta__.py
 
 # Testing and temporary files
 .tox/
+ghostdriver.log
