@@ -25,7 +25,7 @@ The driver object is used to control the web browser. There are several actions
 that can be
 
 
->>> driver.close()                                             
+>>> driver.close()
 
 
 Selectors and queries
