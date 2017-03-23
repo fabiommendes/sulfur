@@ -41,7 +41,7 @@ development, but it is a nice additional check to do before a release.
 If you are really lazy about testing your URLs, and you promess not using it
 in your main test suite ;-), Sulfur offers the ``follow_links`` option. This
 will check validity of all internal urls that can be reached from the given
-page. Beware that if your site is very large this will take a very long time.
+page. Beware that if your site is very large this may take a very long time.
 
 
 Web driver
