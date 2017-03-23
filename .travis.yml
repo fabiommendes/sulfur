@@ -10,7 +10,7 @@ matrix:
   - env: TOXENV=py36
      python: 3.6
   - env: TOXENV=flake8
-     flake8: python3.6
+     python: python3.6
 
 # Package installation
 install:
