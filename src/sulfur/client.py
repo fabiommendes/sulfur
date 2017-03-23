@@ -1,5 +1,4 @@
 import requests
-from lazyutils import delegate_to, lazy
 
 from sulfur.response import HTTPResponse
 

@@ -268,12 +268,13 @@ class SimpleHtml5Validator:
                     if self._stream.startswith('"'):
                         value, self._stream = read_tok(string_re, self._stream)
                     else:
-                        old = self._stream
-                        value, sep, self._stream = re_partition(tag_separator_re, self._stream)
+                        value, sep, self._stream = re_partition(
+                            tag_separator_re, self._stream)
                         if sep.strip():
                             self._stream = sep.strip() + self._stream
                         if not attr_value_re.fullmatch(value):
-                            raise ValidationError('invalid tag attribute: %r' % value)
+                            raise ValidationError(
+                                'invalid tag attribute: %r' % value)
 
                 attributes.append((name, value))
 

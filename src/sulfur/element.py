@@ -4,7 +4,7 @@ from lazyutils import lazy
 from selenium.common.exceptions import ElementNotSelectableException
 from selenium.webdriver.remote.webelement import WebElement
 
-from .conversions import js_to_python, python_to_js, js_source
+from .conversions import js_to_python, python_to_js
 from .errors import DoesNotAcceptInputError
 from .queriable import QueriableMixin
 from .queryset import QuerySet
@@ -189,7 +189,6 @@ class Element(QueriableMixin):
             return js_to_python(se_element.get_property(name))
 
         # Collect new property values
-        prop_map = {}
         if name:
             kwargs = dict(name, **kwargs)
 
@@ -254,7 +253,7 @@ def _(x):
     return x.selenium
 
 
-@js_to_python.register(WebElement)
+@js_to_python.register(WebElement) # noqa
 def _(x):
     return Element(x)
 

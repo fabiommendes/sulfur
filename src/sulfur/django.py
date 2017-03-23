@@ -5,7 +5,6 @@ Django-specific fixtures for Pytest
 import pytest
 
 import sulfur.urlcheckerclient
-from sulfur import urlchecker
 
 __all__ = ['client']
 
@@ -29,5 +28,3 @@ def client():
             client.check_url(url_list, context, html5=True)
     """
     return sulfur.urlcheckerclient.DjangoURLCheckerClient()
-
-

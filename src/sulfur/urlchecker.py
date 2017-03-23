@@ -61,19 +61,8 @@ def check_url(url, url_format=None,
     # The worker function has a simplified interface: it always raises a
     # validation error and accept only simple string url arguments.
     try:
-        # Normalize input urls to a dict
-        if isinstance(url, Mapping):
-            pass
-        elif isinstance(url, (str, bytes)):
-            url = {url: codes}
-        elif isinstance(url, Sequence):
-            url = {url_item: codes for url_item in url}
-        else:
-            raise TypeError('invalid url type: %s' % url.__class__.__name__)
-
-        for url_item, codes in url.items():
-            if url_format is not None:
-                url_item = url_item.format(**url_format)
+        urls = _normalize_url_input(url, url_format, codes)
+        for url_item, codes in urls.items():
             _check_url_worker(url_item, codes=codes, **kwargs)
     except ValidationError:
         if raises:
@@ -83,38 +72,56 @@ def check_url(url, url_format=None,
         return True
 
 
+def _normalize_url_input(url, url_format, codes):
+    if isinstance(url, Mapping):
+        result = url
+    elif isinstance(url, (str, bytes)):
+        result = {url: codes}
+    elif isinstance(url, Sequence):
+        result = {url_item: codes for url_item in url}
+    else:
+        raise TypeError('invalid url type: %s' % url.__class__.__name__)
+
+    if url_format:
+        return {k.format(**url_format): v for k, v in result.items()}
+    else:
+        return result
+
+
+def _get_valid_client(client, login):
+    client = client or Client()
+    if login:
+        if isinstance(login, (tuple, list)):
+            username, password = login
+            client.login(username=username, password=password)
+        else:
+            client.force_login(login)
+    return client
+
+
 def _check_url_worker(url, method=None, post=None,
                       login=None, login_required=False,
                       codes=None, html5=False, html5_validator=None,
                       xhtml=False, client=None):
-    # Login, if necessary
-    server = client or Client()
-    if login:
-        if isinstance(login, (tuple, list)):
-            username, password = login
-            server.login(username=username, password=password)
-        else:
-            server.force_login(login)
+
+    client = _get_valid_client(client, login)
 
     # Build kwargs for executing client's .get(), .post() or other HTTP methods
-    request_kwargs = {}
     if post and method is None:
         method = 'POST'
-    elif method is None:
-        method = 'GET'
-    if method == 'POST' and post:
-        request_kwargs['data'] = post
+    method = method or 'GET'
 
     # Fetch data from server object
-    http_method = getattr(server, method.lower())
-    response = http_method(url, **request_kwargs)
-    response_data = response.content
+    if post:
+        response = client.open(url, method, post)
+    else:
+        response = client.open(url, method)
 
     # Check response code
     if isinstance(codes, int):
         codes = [codes]
     status_code = response.status_code
-    if not status_code in codes:
+    if status_code not in codes:
         msg = '%s: received invalid status code: %s' % (url, status_code)
         raise ValidationError(msg)
 
@@ -122,7 +129,7 @@ def _check_url_worker(url, method=None, post=None,
     if html5:
         html5_validator = _get_html5_validator(html5_validator)
         try:
-            html5_validator(response_data)
+            html5_validator(response.content)
         except ValidationError as ex:
             raise ValidationError('%s: %s' % (url, ex))
 

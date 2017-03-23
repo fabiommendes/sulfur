@@ -84,7 +84,7 @@ def is_xpath_selector(selector):
     Return True if selector defines an xpath.
     """
 
-    #TODO: Fixme
+    # TODO: Fixme
     return False
 
 
@@ -93,7 +93,7 @@ def is_link_selector(selector):
     Return True if receives a link selector.
     """
 
-    #TODO: Fixme
+    # TODO: Fixme
     return False
 
 
@@ -102,7 +102,7 @@ def is_partial_link_selector(selector):
     Return True if receives a partial link selector.
     """
 
-    #TODO: Fixme
+    # TODO: Fixme
     return False
 
 
@@ -111,7 +111,7 @@ def is_name_selector(selector):
     Return True if receives a name selector.
     """
 
-    #TODO: Fixme
+    # TODO: Fixme
     return False
 
 

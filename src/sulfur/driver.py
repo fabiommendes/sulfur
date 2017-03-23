@@ -176,7 +176,7 @@ class Driver(QueriableMixin):
         """
 
         final_url = url = select_url(self.url or self.home_url, url)
-        page = self._driver.get(final_url)
+        self._driver.get(final_url)
 
     def back(self, n=1):
         """
@@ -252,6 +252,10 @@ class Driver(QueriableMixin):
         """
 
         form = self.elem(selector)
+        data = dict(data or None, **kwargs)
+        for ref, value in data.items():
+            elem = form._find_likely_input()
+            elem.fill(value)
 
     def submit(self, selector='form', data=None, **kwargs):
         """
@@ -368,7 +372,7 @@ class Driver(QueriableMixin):
         """
 
         if request:
-            data= requests.get(self.url)
+            data = requests.get(self.url)
             return data.content.decode('utf8')
         else:
             return self._driver.page_source

@@ -55,5 +55,3 @@ class Html5Validator:
             strict_parser.parse(self.data)
         except ParseError as ex:
             raise ValidationError(str(ex))
-
-
