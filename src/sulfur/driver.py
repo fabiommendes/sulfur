@@ -1,27 +1,50 @@
 import io
 
+import requests
 from bs4 import BeautifulSoup
-from lazyutils import lazy, delegate_to
+from lazyutils import lazy
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+from sulfur.conversions import js_to_python
 from sulfur.driver_attributes import WindowManager, FocusManager, CookieManager
 from sulfur.element import Element
+from sulfur.errors import NotFoundError
 from sulfur.id_manager import IdManager
 from sulfur.queriable import QueriableMixin
-from sulfur.query import Query
-from sulfur.utils import normalize_url, join_url, wraps_selenium_timeout_error
+from sulfur.queryset import QuerySet
+from sulfur.utils import normalize_url, select_url, wrap_selenium_timeout_error
 
 
-class DriverBase(QueriableMixin):
+class Driver(QueriableMixin):
     """
+    The sulfur web driver.
+
     A simplified interface to the selenium webdriver with simpler method names
-    and a few useful resources.
+    and a few useful extras.
+
+    Args:
+        driver:
+            If given, can be a string or a Selenium webdriver object. Strings
+            must be on the list: "firefox", "chromium".
+            Of course you should have the corresponding web browser installed
+            in your system.
+        home:
+            The home page. Driver starts at the home page and the method
+            .home() open it.
     """
 
     _soup_lib = 'html5lib'
 
-    title = delegate_to('_driver')
+    #: Attributes
+    @property
+    def title(self):
+        """
+        Page title.
+        """
+
+        return self._driver.title
 
     @lazy
     def cookies(self):
@@ -69,7 +92,7 @@ class DriverBase(QueriableMixin):
     @property
     def id(self):
         """
-        A simplified interface to dom elements with a defined id.
+        A simplified interface to dom elements with an id.
         """
 
         return IdManager(self)
@@ -81,14 +104,6 @@ class DriverBase(QueriableMixin):
         """
 
         return self._driver.capabilities['version']
-
-    @property
-    def html(self):
-        """
-        Page's html source code.
-        """
-
-        return self._driver.page_source
 
     @property
     def window(self):
@@ -107,38 +122,61 @@ class DriverBase(QueriableMixin):
         return FocusManager(self)
 
     @property
-    def windowless(self):
+    def is_windowless(self):
         """
         True if driver runs on a windowless mode (e.g., phantomjs).
+
+        For most drivers, this property is False.
         """
 
         return self._driver.name in ['phantomjs']
 
-    def __init__(self, driver, url='', wait=0):
+    @property
+    def url(self):
+        """
+        Url for the current page.
+        """
+
+        return self.selenium.current_url
+
+    def __init__(self, driver, home=None, wait=0):
+        # Normalize driver input
+        if driver is None:
+            driver = 'phantomjs'
+        if isinstance(driver, str):
+            driver_cls = get_driver_class_from_string(driver)
+            driver = driver_cls()
+
         self._driver = driver
+        self._driver.sulfur = self
         self._page = None
-        self.base_url = url and normalize_url(url)
-        self.url = None
+        self.home_url = home and normalize_url(home)
         self._driver.implicitly_wait(wait)
-        if url:
-            self.open()
+        if self.home_url:
+            self.open(self.home_url)
 
     def __call__(self, selector):
         return self.query(selector)
 
     def __getitem__(self, selector):
-        return self.get(selector)
+        try:
+            return self.elem(selector)
+        except NoSuchElementException:
+            raise KeyError('no element matches selector: %r' % selector)
 
-    # Browser actions
+    def __repr__(self):
+        clsname = self.__class__.__name__
+        drivername = self._driver.name
+        return '<%s(%r): %s>' % (clsname, drivername, self.url or 'no url')
+
+    #: Browser actions
     def open(self, url=''):
         """
-        Opens the given url.
-
-        Returns a page object.
+        Opens a page in the given url.
         """
 
-        self.url = join_url(self.base_url, url)
-        return self._driver.get(self.url)
+        final_url = url = select_url(self.url or self.home_url, url)
+        page = self._driver.get(final_url)
 
     def back(self, n=1):
         """
@@ -159,6 +197,16 @@ class DriverBase(QueriableMixin):
 
         self.back(-n)
 
+    def home(self):
+        """
+        Return to the home page.
+        """
+
+        if self.home_url:
+            self.open(self.home_url)
+        else:
+            raise ValueError('no home url is defined')
+
     def refresh(self):
         """
         Refresh current page.
@@ -166,23 +214,72 @@ class DriverBase(QueriableMixin):
 
         self._driver.refresh()
 
+    # User input
     def click(self, selector):
         """
         Clicks in the first element with the given CSS selector.
         """
 
-        elem = self.get(selector)
-        if elem is not None:
-            elem.click()
+        self.elem(selector).click()
 
-    def send(self, *args, to=None):
+    def send(self, selector, *args):
         """
         Alias to send_keys().
         """
 
-        return self._driver.send_keys(*args)
+        return self.send_keys(selector, *args)
 
-    def script(self, script, async=False):
+    def send_keys(self, selector, *args):
+        """
+        Send keys to the first element matched by the selector.
+
+        Args:
+            selector: a CSS selector
+            text: additional arguments are any combination of keys and text
+
+        Example:
+            >>> driver.send_keys('#name-input', 'Guido', '<tab>', 'Python')
+
+        This will select the element with id ``#name-input``, type Guido, than
+        press the tab key and finally typing Python.
+        """
+        return self.elem(selector).send_keys(*args)
+
+    # Forms
+    def fill_form(self, selector='form', data=None, **kwargs):
+        """
+        Fill form with given values.
+        """
+
+        form = self.elem(selector)
+
+    def submit(self, selector='form', data=None, **kwargs):
+        """
+        Fills form with data and submit.
+
+        If script cannot find the correct submit button, use fill_form() and
+        then click the button yourself.
+        """
+
+        self.fill_form(selector, data, **kwargs)
+        self.submit_button(selector).click()
+
+    def submit_button(self, selector='form'):
+        """
+        Return the submission button for form in the given selector.
+        """
+
+        form = self.elem(selector)
+        result = (
+            form.elem('input[type=submit]', raises=False) or
+            form.elem('button[form=%r]' % form.id, raises=False) or
+            self.elem('button[form=%r]' % form.id, raises=False)
+        )
+        if result is None:
+            raise NotFoundError('could not find button for form.')
+        return result
+
+    def script(self, script, *args, async=False):
         """
         Executes JavaScript script.
 
@@ -190,13 +287,20 @@ class DriverBase(QueriableMixin):
             script (str):
                 A string of JavaScript source.
             async (bool):
-                Set to True to execute script asyncronously.
+                Set to True to execute script asynchronously.
+
+        If you are running a script asynchronously and wants to obtain a value
+        from JavaScript, simply add a ``return <something>`` to the end of
+        the line in your script.
+
+            >>> driver.script('return 40 + 2')
+            42
         """
 
         if async:
-            self._driver.execute_async_script(script)
+            self._driver.execute_async_script(script, *args)
         else:
-            self._driver.execute_script(script)
+            return js_to_python(self._driver.execute_script(script, *args))
 
     def close(self, quit=True):
         """
@@ -227,9 +331,13 @@ class DriverBase(QueriableMixin):
 
         Args:
             path:
-                If given, saves file in the given path.
+                If given, saves file in the given path. Othewise saves it in
+                a BytesIO() stream.
             format:
                 One of 'png' or 'base64'
+
+        Returns:
+            A file object with the screenshot contents.
         """
 
         if path:
@@ -246,8 +354,27 @@ class DriverBase(QueriableMixin):
         F.write(data)
         return F
 
+    def source(self, request=False):
+        """
+        Page's HTML source code.
+
+        Args:
+            request (bool):
+                If True, makes a new request to fetch the page directly without
+                relying on selenium. The browser may inject HTML into the
+                page to make it represent better the DOM and the resulting
+                source may not be identical to the page that was acctually
+                served by the web server.
+        """
+
+        if request:
+            data= requests.get(self.url)
+            return data.content.decode('utf8')
+        else:
+            return self._driver.page_source
+
     # Wait conditions
-    @wraps_selenium_timeout_error
+    @wrap_selenium_timeout_error
     def wait(self, func, timeout=1.0):
         """
         Wait until func(driver) return True.
@@ -258,7 +385,7 @@ class DriverBase(QueriableMixin):
 
         WebDriverWait(self, timeout).until(func)
 
-    @wraps_selenium_timeout_error
+    @wrap_selenium_timeout_error
     def wait_title(self, value, timeout=1.0, contains=False):
         """
         Waits until the page title assumes the given value.
@@ -288,31 +415,10 @@ class DriverBase(QueriableMixin):
 
     def _wrap_query(self, query):
         wrap = self._wrap_element
-        return Query(self, [wrap(x) for x in query])
+        return QuerySet(self, [wrap(x) for x in query])
 
     def _get_query_facade_delegate(self):
         return self._driver
-
-
-class Driver(DriverBase):
-    """
-    The sulfur web driver.
-
-    Args:
-        driver:
-            If given, can be a string or a Selenium webdriver object. Strings
-            must be on the list: "firefox", "chromium".
-            Of course you should have the corresponding web browser installed
-            in your system.
-    """
-
-    def __init__(self, driver=None, **kwargs):
-        if driver is None:
-            driver = 'phantomjs'
-        if isinstance(driver, str):
-            driver_cls = get_driver_class_from_string(driver)
-            driver = driver_cls()
-        super().__init__(driver=driver, **kwargs)
 
 
 def get_driver_class_from_string(name):

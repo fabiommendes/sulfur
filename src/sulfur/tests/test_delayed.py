@@ -2,7 +2,7 @@ import pytest
 
 from sulfur.all import server
 from sulfur.delayed import Delayed
-from sulfur.test_server import TestServer
+from sulfur.testserver import TestServer as Server
 
 
 class Foo:
@@ -22,8 +22,8 @@ def delayed():
 
 
 def test_delayed_object_example():
-    assert str(server).startswith('<sulfur.test_server.TestServer object')
-    assert isinstance(server, TestServer)
+    assert str(server).startswith('<sulfur.testserver.TestServer object')
+    assert isinstance(server, Server)
     assert not isinstance(server, Delayed)
     assert hasattr(server, 'start')
     assert hasattr(server, 'stop')

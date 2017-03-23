@@ -44,3 +44,4 @@ def test_finds_correct_query_type(queryable, id, tag, cls):
     assert queryable._get_query_type(id) == 'id'
     assert queryable._get_query_type(tag) == 'tag_name'
     assert queryable._get_query_type(cls) == 'class_name'
+    assert queryable._get_query_type('[type=submit]') == 'css'

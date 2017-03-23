@@ -59,6 +59,8 @@ setup(
     extras_require={
         'dev': [
             'python-boilerplate[dev]',
+            'sphinx-rtd-theme',
+            'sphinx-autobuild',
         ],
         'django': [
             'django'

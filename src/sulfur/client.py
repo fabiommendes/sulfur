@@ -1,16 +1,21 @@
 import requests
 from lazyutils import delegate_to, lazy
 
+from sulfur.response import HTTPResponse
+
 
 class Client:
     """
-    Abstract HTTP client.
+    A client to an HTTP server.
+
+    Get contents using the .get() .post(), .delete(), etc methods.
     """
 
     DEFAULT_CONCRETE_CLASS = None
 
     def __new__(cls, **kwargs):
-        cls = get_client_class()
+        if cls is Client:
+            cls = get_server_class()
         new = object.__new__(cls)
         new.__init__(**kwargs)
         return new
@@ -19,102 +24,131 @@ class Client:
         self.base_url = base_url
 
     def url_normalize(self, url):
+        """
+        Normalize any given url.
+
+        It can be overriden in subclasses. The default implementation simply
+        prepend the home_url to the given url, if not given.
+        """
+
         return (self.base_url or '') + url
 
-    def get(self, url, data=None):
+    def get(self, url, data=None, **kwargs):
         """
         Opens url using GET.
 
         Return a Page() instance.
         """
 
-        raise NotImplementedError
+        return self.open(url, 'GET', data, **kwargs)
 
-    def post(self, url, data=None):
+    def post(self, url, data=None, **kwargs):
         """
         Opens url using POST.
 
         Return a Response() instance.
         """
 
+        return self.open(url, 'POST', data, **kwargs)
+
+    def put(self, url, data=None, **kwargs):
+        """
+        Opens url using PUT.
+
+        Return a Response() instance.
+        """
+
+        return self.open(url, 'PUT', data, **kwargs)
+
+    def delete(self, url, data=None, **kwargs):
+        """
+        Opens url using DELETE.
+
+        Return a Response() instance.
+        """
+
+        return self.open(url, 'DELETE', data, **kwargs)
+
+    def patch(self, url, data=None, **kwargs):
+        """
+        Opens url using PATCH.
+
+        Return a Response() instance.
+        """
+
+        return self.open(url, 'PATCH', data, **kwargs)
+
+    def open(self, url, verb='GET', data=None, **kwargs):
+        """
+        Opens url using the given http verb.
+
+        Args:
+            url: a valid url
+            verb: an HTTP verb (GET, POST, PUT, DELETE, PATCH)
+            data: a dictionary of data
+
+        Returns:
+            A :cls:`Response` object.
+        """
+
         raise NotImplementedError
 
+    def check_verb(self, verb):
+        """
+        Raises a ValueError if the given HTTP verb is invalid.
+        """
 
-class Response:
-    """
-    Base class for all responses.
-
-    Attributes:
-        content (bytes):
-            A raw byte-string with the response data.
-        data (str):
-            Content as a decoded string.
-        status_code:
-            Numeric HTTP status code (e.g., 200, 404, etc)
-        encoding (str):
-            Data encoding
-        url (str):
-            Request absolute URL
-        header (dict):
-            A dictionary-like object with the HTTP headers.
-    """
-
-    @lazy
-    def data(self):
-        return self.content.decode(self.encoding)
-
-    content = delegate_to('_data')
-    status_code = delegate_to('_data')
-    encoding = delegate_to('_data')
-    url = delegate_to('_data')
-    header = delegate_to('_data')
-
-
-class HTTPResponse(Response):
-    """
-    Represents a response to an HTTP request.
-    """
-
-    def __init__(self, data):
-        self._data = data
+        if verb.upper() not in ('GET', 'POST', 'PUT', 'DELETE', 'PATCH'):
+            raise ValueError('invalid HTTP verb: %s' % verb)
 
 
 class HTTPClient(Client):
     """
-    Client that performs actual HTTP requests
+    Client interface that performs real HTTP requests.
+
+    It uses the requests library to
     """
 
-    def get(self, url, data=None):
+    def open(self, url, verb, data=None):
+        self.check_verb(verb)
         url = self.url_normalize(url)
-        response = requests.get(url, data)
-        return HTTPResponse(response)
-
-    def post(self, url, data=None):
-        url = self.url_normalize(url)
-        response = requests.post(url, data)
+        method = getattr(requests, verb.lower())
+        response = method(url, data)
         return HTTPResponse(response)
 
 
 class DjangoClient(Client):
     """
-    Django-based client interface.
+    Django-based interface.
     """
 
+    def __init__(self, base_url=None):
+        super().__init__(base_url=None)
 
-def get_client_class():
+        from django.test import Client
+        self._client = Client()
+
+    def open(self, url, verb, data=None):
+        self.check_verb(verb)
+        url = self.url_normalize(url)
+        method = getattr(self._client, verb.lower())
+        return method(url, data)
+
+
+def get_server_class():
     """
-    Return the default global client class.
+    Return the default global _client class.
     """
 
     return Client.DEFAULT_CONCRETE_CLASS
 
 
-def set_client_class(cls):
+def set_server_class(cls):
     """
-    Sets the global default client class.
+    Sets the global default _client class.
     """
 
     Client.DEFAULT_CONCRETE_CLASS = cls
 
 
-set_client_class(HTTPClient)
+set_server_class(HTTPClient)

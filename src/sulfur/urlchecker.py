@@ -1,39 +1,43 @@
+from collections import Mapping
+from collections import Sequence
+
 from sulfur.client import Client
 from sulfur.errors import ValidationError
 
 
-def check_response(url, url_data=None,
-                   method=None, post=None,
-                   login=None, login_required=False,
-                   codes=None, code_checker=None,
-                   html5=False, html5_validator=None,
-                   xhtml=False,
-                   client=None,
-                   raises=False):
+def check_url(url, url_format=None,
+              method=None, post=None,
+              login=None, login_required=False,
+              codes=range(200, 300),
+              html5=False, html5_validator=None, xhtml=False,
+              client=None,
+              follow_links=False,
+              raises=True):
     """
     Check if response obey certain constraints.
 
     Args:
         url (str):
-            Page's url. It uses url_data to format the url as
-            ``url.format(**url_data)``. If a list of urls is given, it tests each
-            url separately.
-        url_data (dict):
+            Page's url. It uses url_format to format the url as
+            ``url.format(**url_format)``. If a list of urls is given, it tests
+            each url separately. If a dicionary is passed, it should map urls
+            to error codes.
+        url_format (dict):
             A dictionary used to format url strings.
         method (str):
             HTTP method used to retrieve page. (default: 'GET').
         post (dict):
-            A dictionary with post data. If given, makes method='POST'.
+            A dictionary with post data. If given, makes default method='POST'.
         codes (sequence):
             a list of allowed HTTP response codes.
-        code_checker (function):
-            a function that checks if the response code is valid or not.
         login (str or tuple):
             Can be either a username or a tuple with (username, password) used
             to login just before making the request.
         login_required (bool):
             If True, anonymous users must either return a 401, 403, 404 or it
-            must be a redirect to a login page.
+            must be a redirect to a login page. If login is given, it will test
+            both if one of these error codes is returned for anonymous users
+            and proceeds with the regular evaluation for logged in users.
         html5 (bool):
             If True, makes sure that the response is valid HTML5.
         html5_validator:
@@ -41,64 +45,78 @@ def check_response(url, url_data=None,
         xhtml (bool):
             If True, makes sure the response is valid XHTML.
         raises (bool):
-            If True, raises an exception instead of returing False.
-
-    Raises:
-        If check fails, raises an AssertionError.
+            If False, return True/False instead of raising an exception.
+        client:
+            A Client instance for making http requests.
     """
 
-    # If a list of urls is given, call check_response() in each element
-    # separately
-    if not isinstance(url, (str, bytes)):
-        kwargs = locals()
-        del kwargs['url']
-        for url_item in url:
-            if not check_response(url_item, **kwargs):
-                return False
+    kwargs = locals()
+    kwargs.pop('raises')
+    kwargs.pop('url_format')
+    kwargs.pop('codes')
+    kwargs.pop('url')
+    if kwargs.pop('follow_links'):
+        raise NotImplementedError('follow_links is not implemented yet!')
+
+    # The worker function has a simplified interface: it always raises a
+    # validation error and accept only simple string url arguments.
+    try:
+        # Normalize input urls to a dict
+        if isinstance(url, Mapping):
+            pass
+        elif isinstance(url, (str, bytes)):
+            url = {url: codes}
+        elif isinstance(url, Sequence):
+            url = {url_item: codes for url_item in url}
+        else:
+            raise TypeError('invalid url type: %s' % url.__class__.__name__)
+
+        for url_item, codes in url.items():
+            if url_format is not None:
+                url_item = url_item.format(**url_format)
+            _check_url_worker(url_item, codes=codes, **kwargs)
+    except ValidationError:
+        if raises:
+            raise
+        return False
+    if not raises:
         return True
 
-    # Format url using url_data
-    if url_data:
-        url = url.format(**url_data)
 
-    # Makes login, if necessary
-    client = _get_client_object(client)
+def _check_url_worker(url, method=None, post=None,
+                      login=None, login_required=False,
+                      codes=None, html5=False, html5_validator=None,
+                      xhtml=False, client=None):
+    # Login, if necessary
+    server = client or Client()
     if login:
         if isinstance(login, (tuple, list)):
             username, password = login
-            client.login(username=username, password=password)
+            server.login(username=username, password=password)
         else:
-            client.force_login(login)
+            server.force_login(login)
 
     # Build kwargs for executing client's .get(), .post() or other HTTP methods
-    client_kwargs = {}
+    request_kwargs = {}
     if post and method is None:
         method = 'POST'
     elif method is None:
         method = 'GET'
     if method == 'POST' and post:
-        client_kwargs['data'] = post
+        request_kwargs['data'] = post
 
     # Fetch data from server object
-    http_method = getattr(client, method.lower())
-    response = http_method(url, **client_kwargs)
+    http_method = getattr(server, method.lower())
+    response = http_method(url, **request_kwargs)
     response_data = response.content
 
-    # Normalize code checker to be a function that returns True on valid
-    # response codes. Check if status code is valid
-    if codes and not code_checker:
-        def code_checker(code):
-            return code in codes
-    if not code_checker:
-        def code_checker(code):
-            return True
+    # Check response code
+    if isinstance(codes, int):
+        codes = [codes]
     status_code = response.status_code
-    if not code_checker(status_code):
-        if raises:
-            raise ValidationError('%s: received invalid status code: %s' %
-                                  (url, status_code))
-        else:
-            return False
+    if not status_code in codes:
+        msg = '%s: received invalid status code: %s' % (url, status_code)
+        raise ValidationError(msg)
 
     # Now we check if the content HTML data validates
     if html5:
@@ -106,27 +124,12 @@ def check_response(url, url_data=None,
         try:
             html5_validator(response_data)
         except ValidationError as ex:
-            if raises:
-                raise ValidationError('%s: %s' % (url, ex))
-            else:
-                return False
-    return True
-
-
-def _get_client_object(server, **kwargs):
-    """
-    Return the server object from request.
-    """
-
-    if server is not None:
-        return server
-
-    return Client(**kwargs)
+            raise ValidationError('%s: %s' % (url, ex))
 
 
 def _get_html5_validator(html5_validator):
     """
-    Normalize the html5_validator parameter from check_response.
+    Normalize the html5_validator parameter from check_url.
     """
 
     from sulfur.validators import Html5Validator
@@ -140,65 +143,55 @@ def _get_html5_validator(html5_validator):
 
 def check_ok(url, **kwargs):
     """
-    Like :func:`check_response`, but checks if response code is either in the
+    Like :func:`check_url`, but checks if response code is either in the
     2xx or in the 3xx range.
     """
 
-    return check_response(url,
-                          code_checker=lambda code: 200 <= code <= 399,
-                          **kwargs)
+    return check_url(url, codes=range(200, 400), **kwargs)
 
 
 def check_2xx(url, **kwargs):
     """
-    Like :func:`check_response`, but checks if response code is in the 2xx
+    Like :func:`check_url`, but checks if response code is in the 2xx
     range.
     """
 
-    return check_response(url,
-                          code_checker=lambda code: 200 <= code <= 299,
-                          **kwargs)
+    return check_url(url, codes=range(200, 300), **kwargs)
 
 
 def check_3xx(url, **kwargs):
     """
-    Like :func:`check_response`, but checks if response code is in the 3xx
+    Like :func:`check_url`, but checks if response code is in the 3xx
     range.
     """
 
-    return check_response(url,
-                          code_checker=lambda code: 300 <= code <= 399,
-                          **kwargs)
+    return check_url(url, codes=range(300, 400), **kwargs)
 
 
 def check_4xx(url, **kwargs):
     """
-    Like :func:`check_response`, but checks if response code is in the 4xx
+    Like :func:`check_url`, but checks if response code is in the 4xx
     range.
     """
 
-    return check_response(url,
-                          code_checker=lambda code: 400 <= code <= 499,
-                          **kwargs)
+    return check_url(url, codes=range(400, 500), **kwargs)
 
 
 def check_404(url, **kwargs):
     """
-    Like :func:`check_response`, but checks if response code is 404.
+    Like :func:`check_url`, but checks if response code is 404.
     """
 
-    return check_response(url, codes=[404], **kwargs)
+    return check_url(url, codes=[404], **kwargs)
 
 
 def check_5xx(url, **kwargs):
     """
-    Like :func:`check_response`, but checks if response code is in the 5xx
+    Like :func:`check_url`, but checks if response code is in the 5xx
     range.
     """
 
-    return check_response(url,
-                          code_checker=lambda code: 500 <= code <= 599,
-                          **kwargs)
+    return check_url(url, codes=range(500, 600), **kwargs)
 
 
 # Aliases
@@ -228,4 +221,3 @@ def check_server_error(url, **kwargs):
     Alias to :func:`check_5xx`.
     """
     return check_5xx(url, **kwargs)
-

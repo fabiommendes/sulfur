@@ -11,6 +11,8 @@ Welcome to sulfur's documentation!
 
    Installation instructions <install.rst>
    API documentation <apidoc.rst>
+   Testing <testing.rst>
+   FAQ <faq.rst>
    License <license.rst>
 
 Indices and tables

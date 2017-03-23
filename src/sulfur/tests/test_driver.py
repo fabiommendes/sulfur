@@ -3,9 +3,15 @@ import pytest
 from sulfur.element import Element
 
 
-def test_driver_basic_functionality(driver, server_url):
+def test_driver_opens_page(driver, server_url, base_source):
     driver.open('base.html')
     assert driver.url == server_url + 'base.html'
+
+    # Phantom driver messes with page source whitespace
+    source = driver.source()
+    source = source.replace('\n', '').replace('  ', '')
+    base_source = base_source.replace('\n', '').replace('  ', '')
+    assert source == base_source
     assert driver.title == 'Title'
 
 
@@ -33,7 +39,7 @@ def test_driver_can_restart(driver):
     test_driver_attributes(driver)
 
 
-def test_driver_back_forward(driver):
+def test_driver_navigation(driver):
     driver.open('base.html')
     driver.open('other.html')
     driver.open('another.html')
@@ -103,7 +109,7 @@ def _test_driver_can_create_cookie(driver):
 # Screenshots
 #
 def test_can_take_screenshot(driver):
-    if not driver.windowless:
+    if not driver.is_windowless:
         F = driver.screenshot()
         data = F.read()
         assert data[:6] == b'\x89PNG\r\n'
@@ -122,7 +128,7 @@ def test_window_operations(driver):
 # Focus
 #
 def test_focus_manager(driver):
-    if not driver.windowless:
+    if not driver.is_windowless:
         driver.open('base.html')
         driver.switch_to.window()
         assert isinstance(driver.switch_to.active(), Element)

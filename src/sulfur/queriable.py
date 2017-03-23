@@ -9,16 +9,7 @@ class QueriableMixin:
 
     _query_tests = collections.OrderedDict()
 
-    def _get_query_facade_delegate(self):
-        raise NotImplementedError('must be implemented in subclasses')
-
-    def _wrap_element(self, element):
-        raise NotImplementedError('must be implemented in subclasses')
-
-    def _wrap_query(self, query):
-        raise NotImplementedError('must be implemented in subclasses')
-
-    def get(self, query):
+    def elem(self, query, raises=True):
         """
         Returns the first element that satisfy the given query.
         """
@@ -28,17 +19,26 @@ class QueriableMixin:
 
     def query(self, query):
         """
-        Query current page for the CSS selector pattern.
+        QuerySet current page for the CSS selector pattern.
         """
 
         wrapper = self._wrap_query
         return self.__worker('find_elements_by_', wrapper, query)
 
+    def _get_query_facade_delegate(self):
+        raise NotImplementedError('must be implemented in subclasses')
+
+    def _wrap_element(self, element):
+        raise NotImplementedError('must be implemented in subclasses')
+
+    def _wrap_query(self, query):
+        raise NotImplementedError('must be implemented in subclasses')
+
     def _get_query_type(self, query):
         for func, name in self._query_tests.items():
             if func(query):
                 return name
-        return 'css_selector'
+        return 'css'
 
     def __worker(self, base, wrapper, query):
         delegate = self._get_query_facade_delegate()
@@ -47,6 +47,9 @@ class QueriableMixin:
         return wrapper(method(query))
 
 
+#
+# Utility functions
+#
 TAG_SELECTOR_REGEX = re.compile(r'^(\w|-)+$')
 ID_SELECTOR_REGEX = re.compile(r'^\#(\w|-)+$')
 CLASS_SELECTOR_REGEX = re.compile(r'^\.(\w|-)+$')
@@ -81,7 +84,8 @@ def is_xpath_selector(selector):
     Return True if selector defines an xpath.
     """
 
-    raise NotImplementedError
+    #TODO: Fixme
+    return False
 
 
 def is_link_selector(selector):
@@ -89,7 +93,8 @@ def is_link_selector(selector):
     Return True if receives a link selector.
     """
 
-    raise NotImplementedError
+    #TODO: Fixme
+    return False
 
 
 def is_partial_link_selector(selector):
@@ -97,7 +102,8 @@ def is_partial_link_selector(selector):
     Return True if receives a partial link selector.
     """
 
-    raise NotImplementedError
+    #TODO: Fixme
+    return False
 
 
 def is_name_selector(selector):
@@ -105,7 +111,8 @@ def is_name_selector(selector):
     Return True if receives a name selector.
     """
 
-    raise NotImplementedError
+    #TODO: Fixme
+    return False
 
 
 QueriableMixin._query_tests.update([

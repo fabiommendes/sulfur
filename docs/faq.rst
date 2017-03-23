@@ -5,20 +5,24 @@ Frequently asked questions
 Usage
 =====
 
-Why is this file empty?
------------------------
+Do I have to use pytest and Django during testing?
+--------------------------------------------------
 
-Because it was created automatically by python-boilerplate__ and the package
-author is too busy coding and did not provide a proper FAQ section ;-)
+For now yes. This is the setup I use and if I assume these settings I can take
+some shortcuts during development. That said, it should not be hard to support
+other scenarios.
 
-..: http://github.com/fabiommendes/python-boilerplate/
+Please contact the developers (or better yet, contribute code!) and explain your
+sittuation. We want to make sulfur backend agnostic before v1.0.
+
 
 Concepts
 ========
 
-Why do we want an automatic boilerplate?
-----------------------------------------
+What is a web driver?
+---------------------
 
-Because time is precious and we don't want to waste it in repetitive tasks. Copy
-and paste can go a long way creating a new project, but is tedious and error
-prone. Python boilerplate makes it easy, simple, and beautiful.
+A web driver is a component that is used to control your web browser from an
+external source. Each web browser must have its own driver installed. Sulfur
+will not work with a web browser unless the corresponding web driver is
+installed.
