@@ -70,7 +70,7 @@ setup(
     # Scripts
     entry_points={
         'pytest11': [
-            'sulfur = sulfur.pytest',
+            'sulfur = sulfur_plugin.pytest',
         ]
     },
 
