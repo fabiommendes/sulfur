@@ -1,7 +1,9 @@
 from collections import Sequence
 
+from sulfur.queriable import QueriableMixin
 
-class QuerySet(Sequence):
+
+class QuerySet(Sequence, QueriableMixin):
     """
     A query set of elements in a page.
 
@@ -24,9 +26,14 @@ class QuerySet(Sequence):
     def is_selected(self):
         return all(x.is_selected for x in self)
 
-    def __init__(self, parent, elements):
-        self.parent = parent
-        self.elements = elements
+    def __init__(self, elements, parent):
+        if isinstance(parent, QuerySet):
+            self.parent = parent
+            self._driver = parent._driver
+        else:
+            self.parent = None
+            self._driver = parent
+        self.elements = list(elements or [])
 
     def __repr__(self):
         data = ', '.join(repr(x) for x in self)
@@ -41,6 +48,14 @@ class QuerySet(Sequence):
     def __getitem__(self, i):
         return self.elements[i]
 
+    def __eq__(self, other):
+        if isinstance(other, Sequence):
+            if len(self) == len(other):
+                if all(x == y for x, y in zip(self, other)):
+                    return True
+            return False
+        return NotImplemented
+
     def click(self):
         """
         Clicks on all selected elements.
@@ -48,3 +63,69 @@ class QuerySet(Sequence):
 
         [x.click() for x in self]
         return self
+
+    def filter(self, selector):
+        """
+        Return a filtered queryset with all elements that respect the current
+        selector.
+        """
+
+        if callable(selector):
+            selector_f = selector
+
+        elif isinstance(selector, str):
+            install_matches_selector_polyfill(self._driver)
+            def selector_f(x):
+                return x.method('matches', selector)
+
+        elif isinstance(selector, Sequence):
+            L = list(selector)
+
+            def selector_f(x):
+                return x in L
+
+        data = self._unique([x for x in self if selector_f(x)])
+        return QuerySet(data, self.parent)
+
+    def find(self, selector):
+        """
+        Alias to self.query()
+        """
+        return self.query(selector)
+
+    def _unique(self, data):
+        """
+        Keep only unique elements in the sequence.
+        """
+
+        from sulfur.element import Element
+
+        ids = set()
+        result = []
+        for x in data:
+            if isinstance(x, Element):
+                if x.selenium_id in ids:
+                    continue
+                else:
+                    ids.add(x.selenium_id)
+            result.append(x)
+        return result
+
+
+# Check: https://developer.mozilla.org/en/docs/Web/API/Element/matches
+def install_matches_selector_polyfill(driver):
+    driver.script('''
+    if (!Element.prototype.matches) {
+        Element.prototype.matches =
+            Element.prototype.matchesSelector ||
+            Element.prototype.mozMatchesSelector ||
+            Element.prototype.msMatchesSelector ||
+            Element.prototype.oMatchesSelector ||
+            Element.prototype.webkitMatchesSelector ||
+            function(s) {
+                var matches = (this.document || this.ownerDocument).querySelectorAll(s),
+                    i = matches.length;
+                while (--i >= 0 && matches.item(i) !== this) {}
+                return i > -1;
+            };
+    }''')

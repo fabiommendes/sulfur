@@ -1,6 +1,10 @@
 import collections
 import re
 
+from selenium.common.exceptions import NoSuchElementException
+
+from sulfur import errors
+
 
 class QueriableMixin:
     """
@@ -9,21 +13,43 @@ class QueriableMixin:
 
     _query_tests = collections.OrderedDict()
 
-    def elem(self, query, raises=True):
+    def elem(self, selector, raises=True, unique=False):
         """
-        Returns the first element that satisfy the given query.
+        Returns the first element that satisfy the given selector.
         """
 
-        wrapper = self._wrap_element
-        return self.__worker('find_element_by_', wrapper, query)
+        if unique:
+            qs = self.query(selector, allow_empty=False)
+            if len(qs) == 1:
+                return qs[0]
+            msg = 'query %r returned %s elements' % (selector, len(qs))
+            raise errors.MultipleElementsFoundError(msg)
+        try:
+            wrapper = self._wrap_element
+            return self.__worker('find_element_by_', wrapper, selector)
+        except NoSuchElementException:
+            if raises:
+                raise errors.NotFoundError('no element %r found' % selector)
 
-    def query(self, query):
+    def query(self, selector, allow_empty=True):
         """
         QuerySet current page for the CSS selector pattern.
+
+        Args:
+            selector (str):
+                A css or xpath selector.
+            allow_empty (bool):
+                If False, raise a NotFoundError if resulting queryset is empty.
         """
 
         wrapper = self._wrap_query
-        return self.__worker('find_elements_by_', wrapper, query)
+        return self.__worker('find_elements_by_', wrapper, selector)
+
+    def find(self, selector):
+        """
+        Alias to query().
+        """
+        return self.query(selector)
 
     def _get_query_facade_delegate(self):
         raise NotImplementedError('must be implemented in subclasses')
@@ -31,20 +57,20 @@ class QueriableMixin:
     def _wrap_element(self, element):
         raise NotImplementedError('must be implemented in subclasses')
 
-    def _wrap_query(self, query):
+    def _wrap_query(self, selector):
         raise NotImplementedError('must be implemented in subclasses')
 
-    def _get_query_type(self, query):
+    def _get_query_method_suffix(self, selector):
         for func, name in self._query_tests.items():
-            if func(query):
+            if func(selector):
                 return name
-        return 'css'
+        return 'css_selector'
 
-    def __worker(self, base, wrapper, query):
+    def __worker(self, base, wrapper, selector):
         delegate = self._get_query_facade_delegate()
-        query_type = self._get_query_type(query)
+        query_type = self._get_query_method_suffix(selector)
         method = getattr(delegate, base + query_type)
-        return wrapper(method(query))
+        return wrapper(method(selector))
 
 
 #

@@ -114,3 +114,47 @@ class Shape(_Shape):
         """
 
         return Shape(scale * self.x, scale * self.y)
+
+
+def find_likely_input(form, ref):
+    """
+    Return the likely input element with the given reference.
+    """
+
+    # Fetch by id in the whole document
+    driver = form._driver
+    if ref.startswith('#'):
+        return driver.elem(ref)
+
+    # If it fails, tries to fetch by id (adding a # symbl) inside the form
+    result = (
+        form.elem('#' + ref, raises=False) or
+        form.elem('[name=%s]' % ref, raises=False) or
+        driver.elem('#' + ref, raises=False) or
+        driver.elem('[name=%s]' % ref, raises=False)
+    )
+    if result is None:
+        raise ValueError('could not find element %s on form' % ref)
+    return result
+
+
+def get_driver_class_from_string(name):
+    """
+    Select driver class from name.
+    """
+
+    mapping = {
+        'firefox': 'selenium.webdriver.Firefox',
+        'chrome': 'selenium.webdriver.Chrome',
+        'ie': 'selenium.webdriver.Ie',
+        'edge': 'selenium.webdriver.Edge',
+        'opera': 'selenium.webdriver.Opera',
+        'safari': 'selenium.webdriver.Safari',
+        'blackberry': 'selenium.webdriver.BlackBerry',
+        'phantomjs': 'selenium.webdriver.PhantomJS',
+        'android': 'selenium.webdriver.Android',
+    }
+
+    mod, _, cls = mapping[name].rpartition('.')
+    mod = __import__(mod, fromlist=[cls])
+    return getattr(mod, cls)

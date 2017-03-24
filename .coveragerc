@@ -24,9 +24,9 @@ exclude_lines =
     if __name__ == .__main__.:
     while 0:
     while False:
-
+fail_under = 80
 ignore_errors = True
 
 
 [paths]
-source = src/
+source = src/sulfur

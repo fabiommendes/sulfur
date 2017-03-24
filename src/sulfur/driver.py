@@ -14,7 +14,8 @@ from sulfur.errors import NotFoundError
 from sulfur.id_manager import IdManager
 from sulfur.queriable import QueriableMixin
 from sulfur.queryset import QuerySet
-from sulfur.utils import normalize_url, select_url, wrap_selenium_timeout_error
+from sulfur.utils import normalize_url, select_url, wrap_selenium_timeout_error, \
+    find_likely_input, get_driver_class_from_string
 
 
 class Driver(QueriableMixin):
@@ -139,7 +140,7 @@ class Driver(QueriableMixin):
 
         return self.selenium.current_url
 
-    def __init__(self, driver, home=None, wait=0):
+    def __init__(self, driver='phantomjs', home=None, wait=0):
         # Normalize driver input
         if driver is None:
             driver = 'phantomjs'
@@ -252,9 +253,9 @@ class Driver(QueriableMixin):
         """
 
         form = self.elem(selector)
-        data = dict(data or None, **kwargs)
+        data = dict(data or {}, **kwargs)
         for ref, value in data.items():
-            elem = form._find_likely_input()
+            elem = find_likely_input(form, ref)
             elem.fill(value)
 
     def submit(self, selector='form', data=None, **kwargs):
@@ -419,29 +420,7 @@ class Driver(QueriableMixin):
 
     def _wrap_query(self, query):
         wrap = self._wrap_element
-        return QuerySet(self, [wrap(x) for x in query])
+        return QuerySet([wrap(x) for x in query], self)
 
     def _get_query_facade_delegate(self):
         return self._driver
-
-
-def get_driver_class_from_string(name):
-    """
-    Select driver class from name.
-    """
-
-    mapping = {
-        'firefox': 'selenium.webdriver.Firefox',
-        'chrome': 'selenium.webdriver.Chrome',
-        'ie': 'selenium.webdriver.Ie',
-        'edge': 'selenium.webdriver.Edge',
-        'opera': 'selenium.webdriver.Opera',
-        'safari': 'selenium.webdriver.Safari',
-        'blackberry': 'selenium.webdriver.BlackBerry',
-        'phantomjs': 'selenium.webdriver.PhantomJS',
-        'android': 'selenium.webdriver.Android',
-    }
-
-    mod, _, cls = mapping[name].rpartition('.')
-    mod = __import__(mod, fromlist=[cls])
-    return getattr(mod, cls)

@@ -41,7 +41,7 @@ def test_correctly_identify_tag_selectors(id, tag, cls):
 
 
 def test_finds_correct_query_type(queryable, id, tag, cls):
-    assert queryable._get_query_type(id) == 'id'
-    assert queryable._get_query_type(tag) == 'tag_name'
-    assert queryable._get_query_type(cls) == 'class_name'
-    assert queryable._get_query_type('[type=submit]') == 'css'
+    assert queryable._get_query_method_suffix(id) == 'id'
+    assert queryable._get_query_method_suffix(tag) == 'tag_name'
+    assert queryable._get_query_method_suffix(cls) == 'class_name'
+    assert queryable._get_query_method_suffix('[type=submit]') == 'css_selector'

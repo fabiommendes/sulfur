@@ -1,7 +1,6 @@
 from collections import Mapping
 from collections import Sequence
 
-from sulfur.client import Client
 from sulfur.errors import ValidationError
 
 
@@ -89,6 +88,8 @@ def _normalize_url_input(url, url_format, codes):
 
 
 def _get_valid_client(client, login):
+    from sulfur.client import Client
+
     client = client or Client()
     if login:
         if isinstance(login, (tuple, list)):

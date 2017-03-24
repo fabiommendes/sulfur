@@ -10,7 +10,19 @@ class DoesNotAcceptInputError(ValueError):
     """
 
 
-class NotFoundError(object):
+class QueryError(Exception):
+    """
+    Base class for errors that happen during queries.
+    """
+
+
+class NotFoundError(QueryError):
     """
     Error for failed queries.
+    """
+
+
+class MultipleElementsFoundError(QueryError):
+    """
+    Multiple elements were found when we were expecting only one.
     """

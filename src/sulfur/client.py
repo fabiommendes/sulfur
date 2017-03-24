@@ -1,9 +1,10 @@
 import requests
 
 from sulfur.response import HTTPResponse
+from sulfur.urlcheckerclient import URLCheckerClientMixin
 
 
-class Client:
+class Client(URLCheckerClientMixin):
     """
     A client to an HTTP server.
 

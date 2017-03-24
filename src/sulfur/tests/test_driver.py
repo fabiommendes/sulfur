@@ -60,11 +60,35 @@ def test_driver_executes_script(driver):
     assert driver.title == 'changed'
 
 
-#@pytest.skip('TODO: async exec is halting execution')
-def _test_driver_executes_async_script(driver):
-    driver.script('document.title = "other"', async=True)
-    driver.wait_title('other', timeout=0.5)
+def test_driver_executes_async_script(driver, driver_type):
+    # Phantomjs does not support async js execution
+    if driver_type != 'phantomjs':
+        driver.script('document.title = "other"', async=True)
+        driver.wait_title('other', timeout=0.5)
 
+
+#
+# Forms
+#
+def test_fill_form(driver):
+    driver.open('/form.html')
+    driver.fill_form(
+        foo='foo',
+        bar='bar',
+    )
+    x, y, z = driver.query('input')
+    assert x.prop('value') == 'foo'
+    assert y.prop('value') == 'bar'
+    assert z.attr('type') == 'submit'
+
+
+def test_submit_form(driver):
+    driver.open('/form.html')
+    driver.submit(
+        foo='foo',
+        bar='bar',
+    )
+    assert 'base.html' in driver.url
 
 #
 # Waits
@@ -96,8 +120,8 @@ def test_driver_cookie_interface(driver):
     assert len(driver.cookies) == 0
 
 
-#TODO: make cookie?
-def _test_driver_can_create_cookie(driver):
+@pytest.mark.skip('no support yet')
+def test_driver_can_create_cookie(driver):
     driver.cookies.create('foo', d1=41, d2=42)
     assert len(driver.cookies) == 1
     assert driver.cookies['foo']['d2'] == 42

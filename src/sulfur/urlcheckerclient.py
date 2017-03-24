@@ -1,22 +1,16 @@
-from sulfur import Client, check_url, check_ok, check_2xx, check_3xx, check_4xx, \
-    check_404, check_5xx, DjangoClient
+from sulfur import check_url, check_ok, check_2xx, check_3xx, check_4xx, \
+    check_404, check_5xx
 
 
-class URLCheckerClient:
+class URLCheckerClientMixin:
     """
     A class oriented interface to urlchecker.
 
     The URLCheckerClient object reuses the client object passed to contructor.
     """
 
-    def __init__(self, client=None):
-        self._client = client or Client
-
-    def __getattr__(self, item):
-        return getattr(self, self._client)
-
     def _call_function(self, func, *args, **kwargs):
-        kwargs['client'] = self._client
+        kwargs['client'] = self
         return func(*args, **kwargs)
 
     def check_url(self, *args, **kwargs):
@@ -90,12 +84,3 @@ class URLCheckerClient:
         Alias to :method:`check_5xx`.
         """
         return self.check_5xx(url, *args, **kwargs)
-
-
-class DjangoURLCheckerClient(URLCheckerClient):
-    """
-    A Django-based url-checker.
-    """
-
-    def __init__(self):
-        super().__init__(DjangoClient())

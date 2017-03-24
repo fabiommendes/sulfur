@@ -132,6 +132,12 @@ class Element(QueriableMixin):
             data = ': %r' % self.text
         return '<%s%s%s>' % (self.tag, attrs, data)
 
+    def click(self):
+        """
+        Clicks the element.
+        """
+        self.selenium.click()
+
     def fill(self, text):
         """
         Fill input element with the given text string.
@@ -230,6 +236,20 @@ class Element(QueriableMixin):
             return self._element.value_of_css_property(name)
         raise NotImplementedError
 
+    def method(self, name, *args):
+        """
+        Calls method with the given arguments.
+        """
+        args = python_to_js(args)
+        js = (
+            'var func = arguments[0][arguments[1]];'
+            'return func.apply(arguments[0], arguments[2]);'
+        )
+        result = self._driver.script(js, self._element, name, args)
+        if isinstance(result, WebElement) and result.id == self.selenium_id:
+            return self
+        return js_to_python(result)
+
     # Protected methods
     def _get_query_facade_delegate(self):
         return self._element
@@ -269,7 +289,6 @@ def force_id(elem, keep=True):
 
     old_id = elem.id
     changed_id = False
-    print(elem)
     try:
         changed_id = not old_id
         elem.id = old_id or random_id()

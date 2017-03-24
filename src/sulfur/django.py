@@ -4,8 +4,6 @@ Django-specific fixtures for Pytest
 
 import pytest
 
-import sulfur.urlcheckerclient
-
 __all__ = ['client']
 
 
@@ -27,4 +25,4 @@ def client():
             # Checks if all urls exist (return 200-OK) and are valid HTML5
             client.check_url(url_list, context, html5=True)
     """
-    return sulfur.urlcheckerclient.DjangoURLCheckerClient()
+    return sulfur.DjangoClient()
