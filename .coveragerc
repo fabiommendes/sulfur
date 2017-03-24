@@ -24,7 +24,7 @@ exclude_lines =
     if __name__ == .__main__.:
     while 0:
     while False:
-fail_under = 80
+# fail_under = 80
 ignore_errors = True
 
 

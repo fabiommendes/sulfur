@@ -53,6 +53,66 @@ syntax. The :meth:`driver.Driver.elem` method retrieves a single element and
 :meth:`driver.Driver.query` returns a queryset with all matches to that query
 selector.
 
+>>> driver.find('p')  # fetches all <p>'s in page              # doctest: +SKIP
+<QuerySet: [...]>
+
+Queries can be nested in a way similar to jQuery.
+
+>>> driver.query('div').find('p').filter('.emph')               # doctest: +SKIP
+<QuerySet: [...]>
+
+This finds all <divs>'s in page, then selects their <p>'s children and then
+filters the result to paragraphs with the "emph" class.
+
+
+
+selector.
+
+>>> driver.find('p')  # fetches all <p>'s in page              # doctest: +SKIP
+<QuerySet: [...]>
+
+Queries can be nested in a way similar to jQuery.
+
+>>> driver.query('div').find('p').filter('.emph')               # doctest: +SKIP
+<QuerySet: [...]>
+
+This finds all <divs>'s in page, then selects their <p>'s children and then
+filters the result to paragraphs with the "emph" class.
+
+
+
+selector.
+
+>>> driver.query('p')  # fetches all <p>'s in page              # doctest: +SKIP
+<QuerySet: [...]>
+
+Queries can be nested in a way similar to jQuery.
+
+>>> driver.find('div').find('p').filter('.emph')               # doctest: +SKIP
+<QuerySet: [...]>
+
+This finds all <divs>'s in page, then selects their <p>'s children and then
+filters the result to paragraphs with the "emph" class.
+
+
+
+selector.
+
+>>> driver.query('p')  # fetches all <p>'s in page              # doctest: +SKIP
+<QuerySet: [...]>
+
+Queries can be nested in a way similar to jQuery.
+
+>>> driver.find('div').find('p').filter('.emph')               # doctest: +SKIP
+<QuerySet: [...]>
+
+This finds all <divs>'s in page, then selects their <p>'s children and then
+filters the result to paragraphs with the "emph" class.
+
+
+
+selector.
+
 >>> driver.query('p')  # fetches all <p>'s in page              # doctest: +SKIP
 <QuerySet: [...]>
 

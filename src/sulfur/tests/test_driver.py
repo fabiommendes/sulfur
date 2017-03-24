@@ -76,7 +76,7 @@ def test_fill_form(driver):
         foo='foo',
         bar='bar',
     )
-    x, y, z = driver.query('input')
+    x, y, z = driver.find('input')
     assert x.prop('value') == 'foo'
     assert y.prop('value') == 'bar'
     assert z.attr('type') == 'submit'

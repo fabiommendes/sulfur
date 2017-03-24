@@ -27,12 +27,7 @@ class QuerySet(Sequence, QueriableMixin):
         return all(x.is_selected for x in self)
 
     def __init__(self, elements, parent):
-        if isinstance(parent, QuerySet):
-            self.parent = parent
-            self._driver = parent._driver
-        else:
-            self.parent = None
-            self._driver = parent
+        self.parent = parent
         self.elements = list(elements or [])
 
     def __repr__(self):
@@ -61,7 +56,8 @@ class QuerySet(Sequence, QueriableMixin):
         Clicks on all selected elements.
         """
 
-        [x.click() for x in self]
+        for x in self:
+            x.click()
         return self
 
     def filter(self, selector):
@@ -74,7 +70,7 @@ class QuerySet(Sequence, QueriableMixin):
             selector_f = selector
 
         elif isinstance(selector, str):
-            install_matches_selector_polyfill(self._driver)
+            install_matches_selector_polyfill(self.parent)
             def selector_f(x):
                 return x.method('matches', selector)
 
@@ -89,9 +85,13 @@ class QuerySet(Sequence, QueriableMixin):
 
     def find(self, selector):
         """
-        Alias to self.query()
+        Find sub-elements by CSS selector.
         """
-        return self.query(selector)
+        result = []
+        for x in self:
+            result.extend(x.find(selector))
+        result = self._unique(result)
+        return QuerySet(result, self.parent)
 
     def _unique(self, data):
         """

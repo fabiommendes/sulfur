@@ -157,7 +157,7 @@ class Driver(QueriableMixin):
             self.open(self.home_url)
 
     def __call__(self, selector):
-        return self.query(selector)
+        return self.find(selector)
 
     def __getitem__(self, selector):
         try:
@@ -418,9 +418,9 @@ class Driver(QueriableMixin):
     def _wrap_element(self, element):
         return Element(element, self)
 
-    def _wrap_query(self, query):
+    def _wrap_queryset(self, query):
         wrap = self._wrap_element
         return QuerySet([wrap(x) for x in query], self)
 
-    def _get_query_facade_delegate(self):
+    def _get_selenium_queryset_object(self):
         return self._driver

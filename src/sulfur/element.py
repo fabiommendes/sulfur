@@ -251,15 +251,15 @@ class Element(QueriableMixin):
         return js_to_python(result)
 
     # Protected methods
-    def _get_query_facade_delegate(self):
+    def _get_selenium_queryset_object(self):
         return self._element
 
     def _wrap_element(self, element):
         return Element(element, self._driver)
 
-    def _wrap_query(self, query):
+    def _wrap_queryset(self, queryset):
         wrap = self._wrap_element
-        return QuerySet(self, [wrap(x) for x in query])
+        return QuerySet([wrap(x) for x in queryset], self)
 
     # Checks
     def _assure_can_fill(self):

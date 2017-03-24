@@ -8,7 +8,7 @@ from sulfur import errors
 
 class QueriableMixin:
     """
-    Mixin that defines the .get() and .query() methods for subclasses.
+    Mixin that defines the .get() and .find() methods for subclasses.
     """
 
     _query_tests = collections.OrderedDict()
@@ -19,7 +19,7 @@ class QueriableMixin:
         """
 
         if unique:
-            qs = self.query(selector, allow_empty=False)
+            qs = self.find(selector, allow_empty=False)
             if len(qs) == 1:
                 return qs[0]
             msg = 'query %r returned %s elements' % (selector, len(qs))
@@ -31,7 +31,7 @@ class QueriableMixin:
             if raises:
                 raise errors.NotFoundError('no element %r found' % selector)
 
-    def query(self, selector, allow_empty=True):
+    def find(self, selector, allow_empty=True):
         """
         QuerySet current page for the CSS selector pattern.
 
@@ -42,22 +42,16 @@ class QueriableMixin:
                 If False, raise a NotFoundError if resulting queryset is empty.
         """
 
-        wrapper = self._wrap_query
+        wrapper = self._wrap_queryset
         return self.__worker('find_elements_by_', wrapper, selector)
 
-    def find(self, selector):
-        """
-        Alias to query().
-        """
-        return self.query(selector)
-
-    def _get_query_facade_delegate(self):
+    def _get_selenium_queryset_object(self):
         raise NotImplementedError('must be implemented in subclasses')
 
     def _wrap_element(self, element):
         raise NotImplementedError('must be implemented in subclasses')
 
-    def _wrap_query(self, selector):
+    def _wrap_queryset(self, selector):
         raise NotImplementedError('must be implemented in subclasses')
 
     def _get_query_method_suffix(self, selector):
@@ -67,7 +61,7 @@ class QueriableMixin:
         return 'css_selector'
 
     def __worker(self, base, wrapper, selector):
-        delegate = self._get_query_facade_delegate()
+        delegate = self._get_selenium_queryset_object()
         query_type = self._get_query_method_suffix(selector)
         method = getattr(delegate, base + query_type)
         return wrapper(method(selector))
