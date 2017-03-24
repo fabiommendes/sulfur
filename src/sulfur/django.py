@@ -4,6 +4,8 @@ Django-specific fixtures for Pytest
 
 import pytest
 
+import sulfur
+
 __all__ = ['client']
 
 

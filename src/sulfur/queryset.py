@@ -71,6 +71,7 @@ class QuerySet(Sequence, QueriableMixin):
 
         elif isinstance(selector, str):
             install_matches_selector_polyfill(self.parent)
+
             def selector_f(x):
                 return x.method('matches', selector)
 
