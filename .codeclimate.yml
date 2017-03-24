@@ -3,20 +3,16 @@ engines:
     enabled: true
     config:
       languages:
-      - python
+        - python:
+            mass_threshold: 50
   fixme:
     enabled: true
   radon:
     enabled: true
+    min
 ratings:
   paths:
-  - "**.inc"
-  - "**.js"
-  - "**.jsx"
-  - "**.module"
-  - "**.php"
   - "**.py"
-  - "**.rb"
 exclude_paths:
   - src/sulfur/tests/
   - src/sulfur/tests/data/
