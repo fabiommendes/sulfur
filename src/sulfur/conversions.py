@@ -27,16 +27,14 @@ def python_to_js(x):
 @js_to_python.register(set)
 @js_to_python.register(list)
 def _(L):
-    cls = type(L)
-    return cls(js_to_python(x) for x in L)
+    return type(L)(js_to_python(x) for x in L)
 
 
 @python_to_js.register(tuple)  # noqa: F811
 @python_to_js.register(set)
 @python_to_js.register(list)
 def _(L):
-    cls = type(L)
-    return cls(python_to_js(x) for x in L)
+    return type(L)(python_to_js(x) for x in L)
 
 
 @js_to_python.register(dict)  # noqa: F811

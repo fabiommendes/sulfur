@@ -113,10 +113,8 @@ def _check_url_worker(url, method=None, post=None,
     method = method or 'GET'
 
     # Fetch data from server object
-    if post:
-        response = client.open(url, method, post)
-    else:
-        response = client.open(url, method)
+    args = (post,) if post else ()
+    response = client.open(url, method, *args)
 
     # Check response code
     if isinstance(codes, int):

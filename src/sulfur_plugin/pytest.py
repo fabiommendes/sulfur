@@ -2,8 +2,8 @@
 Sulfur py.test plugin.
 """
 import os
-import pytest
 
+import pytest
 
 if not os.environ.get('SULFUR_DISABLE_PLUGIN', '').lower() == 'true':
     # We don't want to import sulfur globally in order to preserve coverage
@@ -11,18 +11,15 @@ if not os.environ.get('SULFUR_DISABLE_PLUGIN', '').lower() == 'true':
     # loaded before coverage starts its tracer, hence many lines will not be
     # counted when coverage runs.
 
-
     @pytest.fixture
     def driver(driver):
         import sulfur
         return sulfur.Driver()
 
-
     @pytest.fixture
     def client(driver):
         import sulfur.client
         return sulfur.Driver()
-
 
     @pytest.fixture
     def urlchecker():

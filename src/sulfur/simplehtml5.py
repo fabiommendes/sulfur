@@ -248,44 +248,52 @@ class SimpleHtml5Validator:
         elif tagname.endswith('>'):
             tagname = tagname[:-1]
         else:
-            tag_kwargs['attributes'] = attributes = []
-            while not (self._stream.startswith('>') or
-                           self._stream.startswith('/>')):
-
-                # We start reading an attribute name and then process it
-                # looking for a possible value in the rhs of the equality
-                name, self._stream = read_tok(attr_name_re, self._stream)
-                if not name:
-                    raise ValidationError(
-                        'expect attribute on open "%s" tag' % tagname)
-
-                # Now we look for the "=" sign to decide if we must check the
-                # rhs of the attribute declaration
-                op, self._stream = read_tok(eq_sign_re, self._stream)
-                if not op:
-                    value = None
-                else:
-                    if self._stream.startswith('"'):
-                        value, self._stream = read_tok(string_re, self._stream)
-                    else:
-                        value, sep, self._stream = re_partition(
-                            tag_separator_re, self._stream)
-                        if sep.strip():
-                            self._stream = sep.strip() + self._stream
-                        if not attr_value_re.fullmatch(value):
-                            raise ValidationError(
-                                'invalid tag attribute: %r' % value)
-
-                attributes.append((name, value))
-
-                if not self._stream:
-                    raise ValidationError(
-                        '">" expected for closing %s tag' % tagname)
-            self._stream = self._stream[1:]  # strip the first ">" character
-
+            tag_kwargs = self._parse_tag_attrs(tagname)
         tag = HtmlTag.create_valid(tagname.strip(), **tag_kwargs)
         self._open_tags.append(tag)
         return tag
+
+    def _parse_tag_attrs(self, tagname):
+        attributes = []
+        result = {'attributes': attributes}
+        while not (self._stream.startswith('>') or
+                       self._stream.startswith('/>')):
+            # We start reading an attribute name and then process it
+            # looking for a possible value in the rhs of the equality
+            name, self._stream = read_tok(attr_name_re, self._stream)
+            if not name:
+                msg = 'expect attribute on open "%s" tag' % tagname
+                raise ValidationError(msg)
+
+            # Now we look for the "=" sign to decide if we must check the
+            # rhs of the attribute declaration
+            op, self._stream = read_tok(eq_sign_re, self._stream)
+            if not op:
+                value = None
+            elif self._stream.startswith('"'):
+                value, self._stream = read_tok(string_re, self._stream)
+            else:
+                value, sep, self._stream = re_partition(
+                    tag_separator_re, self._stream)
+                if sep.strip():
+                    self._stream = sep.strip() + self._stream
+                if not attr_value_re.fullmatch(value):
+                    msg = 'invalid tag attribute: %r' % value
+                    raise ValidationError(msg)
+
+            attributes.append((name, value))
+            self._check_stream_has_not_ended(tagname=tagname)
+
+        self._stream = self._stream[1:]  # strip the first ">" character
+        return result
+
+    def _check_stream_has_not_ended(self, tagname=None):
+        if not self._stream:
+            if tagname:
+                msg = '">" expected for closing %s tag' % tagname
+                raise ValidationError(msg)
+            else:
+                raise ValidationError('stream ended unexpectedly')
 
     def _parse_endtag(self):
         tag, _, self._stream = self._stream.partition('>')
