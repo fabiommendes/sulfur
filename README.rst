@@ -1,3 +1,7 @@
+.. warning::
+
+   This project is no longer maintained. For browser automation and testing, see `Playwright for Python <https://playwright.dev/python/>`_ and pytest-playwright. Unfinished local work is saved in the `wip-local` branch.
+
 Sulfur is a simplified web driver interface for python-selenium. Sulfur has
 a more pleasant (and less java-esque) interface and also uses BeautifulSoup
 to make an even tastier API.
