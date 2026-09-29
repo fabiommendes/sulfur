@@ -1,6 +1,6 @@
-from collections import Sequence
+from collections.abc import Sequence
 
-from sulfur.queriable import QueriableMixin
+from sulfur.query.queriable import QueriableMixin
 
 
 class QuerySet(Sequence, QueriableMixin):
@@ -68,19 +68,14 @@ class QuerySet(Sequence, QueriableMixin):
 
         if callable(selector):
             selector_f = selector
-
         elif isinstance(selector, str):
             install_matches_selector_polyfill(self.parent)
-
-            def selector_f(x):
-                return x.method('matches', selector)
-
+            selector_f = (lambda x: x.method('matches', selector))
         elif isinstance(selector, Sequence):
             L = list(selector)
-
-            def selector_f(x):
-                return x in L
-
+            selector_f = (lambda x: x in L)
+        else:
+            raise TypeError('invalid selector: %r' % selector)
         data = self._unique([x for x in self if selector_f(x)])
         return QuerySet(data, self.parent)
 

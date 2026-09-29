@@ -1,5 +1,5 @@
 import pytest
-from sulfur.queriable import *
+from sulfur.query.queriable import *
 
 
 @pytest.fixture(params=['#foo', '#foo-bar', '#foo_bar', '#FooBar'])

@@ -1,8 +1,8 @@
 from html5lib import HTMLParser
 from html5lib.html5parser import ParseError
 
-from sulfur.errors import ValidationError
-from sulfur.simplehtml5 import SimpleHtml5Validator
+from .simplehtml5 import SimpleHtml5Validator
+from ..exceptions import ValidationError
 
 
 class Html5Validator:

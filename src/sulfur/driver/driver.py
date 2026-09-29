@@ -7,15 +7,14 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from sulfur.conversions import js_to_python
-from sulfur.driver_attributes import WindowManager, FocusManager, CookieManager
-from sulfur.element import Element
-from sulfur.errors import NotFoundError
-from sulfur.id_manager import IdManager
-from sulfur.queriable import QueriableMixin
-from sulfur.queryset import QuerySet
-from sulfur.utils import normalize_url, select_url, wrap_selenium_timeout_error, \
-    find_likely_input, get_driver_class_from_string
+from .attributes import WindowManager, FocusManager, CookieManager
+from .id_manager import IdManager
+from .utils import wrap_selenium_timeout_error, get_driver_class_from_string
+from ..element import Element
+from ..exceptions import NotFoundError
+from ..query import QuerySet, QueriableMixin
+from ..utils.conversions import js_to_python
+from ..utils.url import normalize_url, select_url
 
 
 class Driver(QueriableMixin):
@@ -215,7 +214,7 @@ class Driver(QueriableMixin):
 
         self._driver.refresh()
 
-    # User input
+    #: User input
     def click(self, selector):
         """
         Clicks in the first element with the given CSS selector.
@@ -276,9 +275,9 @@ class Driver(QueriableMixin):
 
         form = self.elem(selector)
         result = (
-            form.elem('input[type=submit]', raises=False) or
-            form.elem('button[form=%r]' % form.id, raises=False) or
-            self.elem('button[form=%r]' % form.id, raises=False)
+                form.elem('input[type=submit]', raises=False) or
+                form.elem('button[form=%r]' % form.id, raises=False) or
+                self.elem('button[form=%r]' % form.id, raises=False)
         )
         if result is None:
             raise NotFoundError('could not find button for form.')
@@ -286,7 +285,7 @@ class Driver(QueriableMixin):
 
     def script(self, script, *args, async=False):
         """
-        Executes JavaScript script.
+        Executes JavaScript.
 
         Args:
             script (str):
@@ -294,7 +293,7 @@ class Driver(QueriableMixin):
             async (bool):
                 Set to True to execute script asynchronously.
 
-        If you are running a script asynchronously and wants to obtain a value
+        If you are running a script synchronously and wants to obtain a value
         from JavaScript, simply add a ``return <something>`` to the end of
         the line in your script.
 
@@ -331,7 +330,7 @@ class Driver(QueriableMixin):
     # Other
     def screenshot(self, path=None, format='png'):
         """
-        Returns a file object holding data for a  screenshot of the current
+        Returns a file object holding data for a screenshot of the current
         screen.
 
         Args:
@@ -387,7 +386,6 @@ class Driver(QueriableMixin):
         Raises a TimeoutError if condition is not met in the given timeout
         interval.
         """
-
         WebDriverWait(self, timeout).until(func)
 
     @wrap_selenium_timeout_error
@@ -424,3 +422,25 @@ class Driver(QueriableMixin):
 
     def _get_selenium_queryset_object(self):
         return self._driver
+
+
+def find_likely_input(form, ref):
+    """
+    Return the likely input element with the given reference.
+    """
+
+    # Fetch by id in the whole document
+    driver = form._driver
+    if ref.startswith('#'):
+        return driver.elem(ref)
+
+    # If it fails, tries to fetch by id (adding a # symbol) inside the form
+    result = (
+            form.elem('#' + ref, raises=False) or
+            form.elem('[name=%s]' % ref, raises=False) or
+            driver.elem('#' + ref, raises=False) or
+            driver.elem('[name=%s]' % ref, raises=False)
+    )
+    if result is None:
+        raise ValueError('could not find element %s on form' % ref)
+    return result

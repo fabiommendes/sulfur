@@ -1,7 +1,7 @@
 import pytest
 
 from sulfur.all import server
-from sulfur.delayed import Delayed
+from sulfur.utils.delayed import Delayed
 from sulfur.testserver import TestServer as Server
 
 

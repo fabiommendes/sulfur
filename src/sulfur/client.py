@@ -1,7 +1,7 @@
 import requests
 
 from sulfur.response import HTTPResponse
-from sulfur.urlcheckerclient import URLCheckerClientMixin
+from sulfur.validation.urlcheckerclient import URLCheckerClientMixin
 
 
 class Client(URLCheckerClientMixin):
@@ -27,10 +27,9 @@ class Client(URLCheckerClientMixin):
         """
         Normalize any given url.
 
-        It can be overriden in subclasses. The default implementation simply
+        It can be overridden in subclasses. The default implementation simply
         prepend the home_url to the given url, if not given.
         """
-
         return (self.base_url or '') + url
 
     def get(self, url, data=None, **kwargs):

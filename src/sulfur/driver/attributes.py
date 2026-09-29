@@ -1,7 +1,10 @@
 import collections
 
-from sulfur.element import Element
-from sulfur.utils import Shape, Position
+from selenium.webdriver.remote.webdriver import WebDriver
+
+from .. import scripts
+from ..element import Element
+from ..utils.vector import Shape, Position
 
 
 class DriverAttributeMixin:
@@ -9,14 +12,16 @@ class DriverAttributeMixin:
     Base class for several driver attributes.
     """
 
+    _selenium: WebDriver
+
     def __init__(self, driver):
-        self._parent = driver
-        self._driver = driver.selenium
+        self._sulfur = driver
+        self._selenium = driver.selenium
 
     def _wrap_element(self, el):
         if el is None:
             return None
-        return Element(el, self._parent)
+        return Element(el, self._sulfur)
 
 
 class WindowManager(DriverAttributeMixin):
@@ -29,38 +34,37 @@ class WindowManager(DriverAttributeMixin):
         """
         Window shape as a (width, height) tuple.
         """
-        shape = self._driver.get_window_size()
+        shape = self._selenium.get_window_size()
         return Shape(**shape)
 
     @shape.setter
     def shape(self, value):
         width, height = value
-        self._driver.set_window_size(width, height)
+        self._selenium.set_window_size(width, height)
 
     @property
     def position(self):
-        pos = self._driver.get_window_position()
+        pos = self._selenium.get_window_position()
         return Position(**pos)
 
     @position.setter
     def position(self, value):
         x, y = value
-        self._driver.set_window_position(x, y)
+        self._selenium.set_window_position(x, y)
 
     def maximize(self):
         """
         Maximizes browser window.
         """
 
-        self._driver.maximize_window()
+        self._selenium.maximize_window()
 
     def minimize(self):
         """
         Minimizes browser window.
         """
 
-        raise NotImplementedError
-        self._driver.minimize_window()
+        self._sulfur.script(scripts.MINIMIZE_WINDOW, async=True)
 
 
 class FocusManager(DriverAttributeMixin):
@@ -72,24 +76,21 @@ class FocusManager(DriverAttributeMixin):
         """
         Focus on active element.
 
-        Selects page <body> if no elemente is active.
+        Selects page <body> if no element is active.
         """
-
-        return self._wrap_element(self._driver.switch_to)
+        return self._wrap_element(self._selenium.switch_to)
 
     def alert(self):
         """
         Focus on an alert on page.
         """
-
-        return self._wrap_element(self._driver.switch_to.alert)
+        return self._wrap_element(self._selenium.switch_to.alert)
 
     def default_frame(self):
         """
         Focus on default frame.
         """
-
-        return self._wrap_element(self._driver.switch_to.default_content())
+        return self._wrap_element(self._selenium.switch_to.default_content())
 
     def frame(self, reference):
         """
@@ -98,14 +99,14 @@ class FocusManager(DriverAttributeMixin):
         Reference can be a name, an index or an element.
         """
 
-        return self._driver.switch_to.frame(reference)
+        return self._selenium.switch_to.frame(reference)
 
     def window(self, name='main'):
         """
         Switch to window specified by name.
         """
 
-        return self._wrap_element(self._driver.switch_to.window(name))
+        return self._wrap_element(self._selenium.switch_to.window(name))
 
 
 class CookieManager(DriverAttributeMixin, collections.Sequence):
@@ -115,11 +116,11 @@ class CookieManager(DriverAttributeMixin, collections.Sequence):
 
     @property
     def _data(self):
-        return self._driver.get_cookies()
+        return self._selenium.get_cookies()
 
     def __getitem__(self, key):
         if isinstance(key, str):
-            return self._driver.get_cookie(key)
+            return self._selenium.get_cookie(key)
         else:
             return self._data[key]
 
@@ -133,14 +134,14 @@ class CookieManager(DriverAttributeMixin, collections.Sequence):
         self.create(key, value)
 
     def __delitem__(self, key):
-        self._driver.delete_cookie(key)
+        self._selenium.delete_cookie(key)
 
     def clear(self):
         """
         Remove all cookies.
         """
 
-        self._driver.delete_all_cookies()
+        self._selenium.delete_all_cookies()
 
     def create(self, name=None, D=None, **kwargs):
         """
@@ -151,4 +152,4 @@ class CookieManager(DriverAttributeMixin, collections.Sequence):
             kwargs['name'] = name
         if D is not None:
             kwargs = dict(D, **kwargs)
-        return self._driver.add_cookie(kwargs)
+        return self._selenium.add_cookie(kwargs)

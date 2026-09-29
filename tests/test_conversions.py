@@ -1,6 +1,6 @@
 import pytest
 
-from sulfur.conversions import js_to_python, python_to_js, js_source
+from sulfur.utils.conversions import js_to_python, python_to_js, js_source
 
 
 def test_basic_conversions_of_common_types():

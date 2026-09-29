@@ -13,7 +13,7 @@ some shortcuts during development. That said, it should not be hard to support
 other scenarios.
 
 Please contact the developers (or better yet, contribute code!) and explain your
-sittuation. We want to make sulfur backend agnostic before v1.0.
+situation. Sulfur will be backend agnostic before v1.0.
 
 
 Concepts

@@ -3,7 +3,7 @@ import random
 
 import pytest
 
-from sulfur.tests.utils import get_source
+from .utils import get_source
 
 
 @pytest.fixture(scope='session')

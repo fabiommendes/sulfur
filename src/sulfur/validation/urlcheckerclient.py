@@ -1,4 +1,4 @@
-from sulfur import check_url, check_ok, check_2xx, check_3xx, check_4xx, \
+from .urlchecker import check_url, check_ok, check_2xx, check_3xx, check_4xx, \
     check_404, check_5xx
 
 

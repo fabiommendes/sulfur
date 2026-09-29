@@ -1,7 +1,7 @@
 import pytest
 
 from sulfur import ValidationError
-from sulfur.simplehtml5 import validate
+from sulfur.validation.simplehtml5 import validate_html5
 
 
 @pytest.fixture(
@@ -31,7 +31,7 @@ def ok(request):
 
 
 def assert_ok(data, html_identity=True):
-    ast = validate(data)
+    ast = validate_html5(data)
     if html_identity:
         html_render = ast.render().strip()
         data = data.strip()
@@ -73,7 +73,7 @@ def test_comment():
 
 def test_invalid_examples(bad):
     with pytest.raises(ValidationError):
-        validate(bad)
+        validate_html5(bad)
 
 
 def test_ok(ok):

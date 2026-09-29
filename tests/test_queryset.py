@@ -1,13 +1,11 @@
 import pytest
-from sulfur import Driver
-from sulfur import errors
-from sulfur.queryset import install_matches_selector_polyfill
+from sulfur.query.queryset import install_matches_selector_polyfill
 
 
 class TestQueryset:
     @pytest.yield_fixture(scope='class')
     def driver(self, driver_type, server_url):
-        from sulfur.tests.conftest import driver
+        from tests.conftest import driver
 
         gen = driver(driver_type, server_url)
         driver = next(gen)

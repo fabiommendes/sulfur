@@ -4,11 +4,10 @@ from lazyutils import lazy
 from selenium.common.exceptions import ElementNotSelectableException
 from selenium.webdriver.remote.webelement import WebElement
 
-from .conversions import js_to_python, python_to_js
-from .errors import DoesNotAcceptInputError
-from .queriable import QueriableMixin
-from .queryset import QuerySet
-from .utils import Position, Shape, random_id
+from .exceptions import DoesNotAcceptInputError
+from .query import QueriableMixin, QuerySet
+from .utils import Position, Shape, js_to_python, python_to_js
+from .utils.url import random_id
 
 FILL_TAGS_WHITELIST = ['input', 'textarea', 'form']
 
@@ -86,7 +85,6 @@ class Element(QueriableMixin):
         """
         Element's shape.
         """
-
         shape = self._element.size
         return Shape(**shape)
 
@@ -208,28 +206,28 @@ class Element(QueriableMixin):
         """
         Alias to self.prop()
         """
-
         return self.prop(name, **kwargs)
 
     def css(self, name=None, **kwargs):
         """
-        Return or set a CSS property.
+        Return or set a style property property.
 
         Usage:
-        elem.css('prop-name'):
-            Return the value of given CSS property
-        elem.css({'foo': 'bar', 'spam': 'eggs'}):
-            Sets the values of all CSS properties on dictionary.
-        elem.css(font_family=bar, spam=eggs):
-            Sets each named CSS property. Underscores on property names are
-            converted to dashes.
+            elem.css():
+                Return a dictionary with all style properties
+            elem.css('prop-name'):
+                Return the value of given CSS property
+            elem.css({'foo': 'bar', 'spam': 'eggs'}):
+                Sets the values of all CSS properties on dictionary.
+            elem.css(font_family=bar, spam=eggs):
+                Sets each named CSS property. Underscores on property names are
+                converted to dashes.
 
         Example:
-
-        >>> elem.css({
-        ...     'font-family': 'Helvetica',
-        ...     'padding': '20px';
-        ... })
+            >>> elem.css({
+            ...     'font-family': 'Helvetica',
+            ...     'padding': '20px';
+            ... })
         """
 
         if not kwargs and isinstance(name, str):
@@ -238,7 +236,7 @@ class Element(QueriableMixin):
 
     def method(self, name, *args):
         """
-        Calls method with the given arguments.
+        Calls javascript method with the given arguments.
         """
         args = python_to_js(args)
         js = (
@@ -273,7 +271,7 @@ def _(x):
     return x.selenium
 
 
-@js_to_python.register(WebElement) # noqa
+@js_to_python.register(WebElement)  # noqa
 def _(x):
     return Element(x)
 

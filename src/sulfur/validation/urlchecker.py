@@ -1,13 +1,12 @@
-from collections import Mapping
-from collections import Sequence
+from collections.abc import Mapping, Sequence
 
-from sulfur.errors import ValidationError
+from ..exceptions import ValidationError
 
 
 def check_url(url, url_format=None,
               method=None, post=None,
               login=None, login_required=False,
-              codes=range(200, 300),
+              codes=range(200, 400),
               html5=False, html5_validator=None, xhtml=False,
               client=None,
               follow_links=False,
@@ -69,82 +68,6 @@ def check_url(url, url_format=None,
         return False
     if not raises:
         return True
-
-
-def _normalize_url_input(url, url_format, codes):
-    if isinstance(url, Mapping):
-        result = url
-    elif isinstance(url, (str, bytes)):
-        result = {url: codes}
-    elif isinstance(url, Sequence):
-        result = {url_item: codes for url_item in url}
-    else:
-        raise TypeError('invalid url type: %s' % url.__class__.__name__)
-
-    if url_format:
-        return {k.format(**url_format): v for k, v in result.items()}
-    else:
-        return result
-
-
-def _get_valid_client(client, login):
-    from sulfur.client import Client
-
-    client = client or Client()
-    if login:
-        if isinstance(login, (tuple, list)):
-            username, password = login
-            client.login(username=username, password=password)
-        else:
-            client.force_login(login)
-    return client
-
-
-def _check_url_worker(url, method=None, post=None,
-                      login=None, login_required=False,
-                      codes=None, html5=False, html5_validator=None,
-                      xhtml=False, client=None):
-
-    client = _get_valid_client(client, login)
-
-    # Build kwargs for executing client's .get(), .post() or other HTTP methods
-    if post and method is None:
-        method = 'POST'
-    method = method or 'GET'
-
-    # Fetch data from server object
-    args = (post,) if post else ()
-    response = client.open(url, method, *args)
-
-    # Check response code
-    if isinstance(codes, int):
-        codes = [codes]
-    status_code = response.status_code
-    if status_code not in codes:
-        msg = '%s: received invalid status code: %s' % (url, status_code)
-        raise ValidationError(msg)
-
-    # Now we check if the content HTML data validates
-    if html5:
-        html5_validator = _get_html5_validator(html5_validator)
-        try:
-            html5_validator(response.content)
-        except ValidationError as ex:
-            raise ValidationError('%s: %s' % (url, ex))
-
-
-def _get_html5_validator(html5_validator):
-    """
-    Normalize the html5_validator parameter from check_url.
-    """
-
-    from sulfur.validators import Html5Validator
-
-    if html5_validator is None:
-        html5_validator = 'default'
-    if callable(html5_validator):
-        return html5_validator
-    return Html5Validator.as_validator(html5_validator)
 
 
 def check_ok(url, **kwargs):
@@ -227,3 +150,81 @@ def check_server_error(url, **kwargs):
     Alias to :func:`check_5xx`.
     """
     return check_5xx(url, **kwargs)
+
+
+#
+# Utility functions
+#
+def _normalize_url_input(url, url_format, codes):
+    if isinstance(url, Mapping):
+        result = url
+    elif isinstance(url, (str, bytes)):
+        result = {url: codes}
+    elif isinstance(url, Sequence):
+        result = {url_item: codes for url_item in url}
+    else:
+        raise TypeError('invalid url type: %s' % url.__class__.__name__)
+
+    if url_format:
+        return {k.format(**url_format): v for k, v in result.items()}
+    else:
+        return result
+
+
+def _get_valid_client(client, login):
+    from sulfur.client import Client
+
+    client = client or Client()
+    if login:
+        if isinstance(login, (tuple, list)):
+            username, password = login
+            client.login(username=username, password=password)
+        else:
+            client.force_login(login)
+    return client
+
+
+def _check_url_worker(url, method=None, post=None,
+                      login=None, login_required=False,
+                      codes=None, html5=False, html5_validator=None,
+                      xhtml=False, client=None):
+    client = _get_valid_client(client, login)
+
+    # Build kwargs for executing client's .get(), .post() or other HTTP methods
+    if post and method is None:
+        method = 'POST'
+    method = method or 'GET'
+
+    # Fetch data from server object
+    args = (post,) if post else ()
+    response = client.open(url, method, *args)
+
+    # Check response code
+    if isinstance(codes, int):
+        codes = [codes]
+    status_code = response.status_code
+    if status_code not in codes:
+        msg = '%s: received invalid status code: %s' % (url, status_code)
+        raise ValidationError(msg)
+
+    # Now we check if the content HTML data validates
+    if html5:
+        html5_validator = _get_html5_validator(html5_validator)
+        try:
+            html5_validator(response.content)
+        except ValidationError as ex:
+            raise ValidationError('%s: %s' % (url, ex))
+
+
+def _get_html5_validator(html5_validator):
+    """
+    Normalize the html5_validator parameter from check_url.
+    """
+
+    from sulfur.validation.validators import Html5Validator
+
+    if html5_validator is None:
+        html5_validator = 'default'
+    if callable(html5_validator):
+        return html5_validator
+    return Html5Validator.as_validator(html5_validator)

@@ -1,12 +1,13 @@
 import pytest
+
 from sulfur import Driver
-from sulfur import errors
+from sulfur import exceptions
 
 
 class TestElement:
     @pytest.yield_fixture(scope='class')
     def driver(self, driver_type, server_url):
-        from sulfur.tests.conftest import driver
+        from tests.conftest import driver
 
         gen = driver(driver_type, server_url)
         driver = next(gen)
@@ -36,9 +37,9 @@ class TestElement:
     def test_element_fill_fails_for_non_input(self, driver):
         h1 = driver.elem('h1')
 
-        with pytest.raises(errors.DoesNotAcceptInputError):
+        with pytest.raises(exceptions.DoesNotAcceptInputError):
             h1.fill('hello world!')
-        with pytest.raises(errors.DoesNotAcceptInputError):
+        with pytest.raises(exceptions.DoesNotAcceptInputError):
             h1.clear()
 
     def test_get_element_html_properties(self, driver):
@@ -53,4 +54,3 @@ class TestElement:
         h1 = driver.elem('h1')
         h1.prop(id='new_id')
         assert h1.id == 'new_id'
-
